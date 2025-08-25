@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{title}}</title>
+    <style>
+
+        .menu-btn {
+
+          display: flex;           /* arrange spans (bars) in a column layout */
+          flex-direction: column;
+          justify-content: center;
+          padding:0;
+          gap: 0.75vh;
+          border: none;
+
+          background-color: transparent;
+        }
+        #menu-div {
+            position: fixed;
+            top: 0;
+            left: 0;
+            margin: 0.7vh;
+            z-index: 999;
+            opacity: 0.7;
+            width: fit-content;
+            height: fit-content;
+            border-radius: 10px;
+        }
+           #left-div {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            margin: 0.7vh;
+            z-index: 999;
+            opacity: 0.7;
+            width: fit-content;
+            height: fit-content;
+            border-radius: 10px;
+        }
+          #right-div {
+            position: absolute;
+            top: 50%;
+            right: 0;
+            margin: 0.7vh;
+            z-index: 999;
+            opacity: 0.7;
+            width: fit-content;
+            height: fit-content;
+            border-radius: 10px;
+        }
+        #close-div {
+            position: absolute;
+            top: 0;
+            right: 0;
+            margin: 0.7vh;
+            z-index: 999;
+            opacity: 0.7;
+            width: fit-content;
+            height: fit-content;
+        }
+        #trash-div {
+            position: absolute;
+            top: 0;
+            left: 0;
+            margin: 0.7vh;
+            z-index: 999;
+            opacity: 0.7;
+            width: fit-content;
+            height: fit-content;
+        }
+
+        #orig-div {
+            position: absolute;
+            top: 0;
+            left: 0;
+            margin: 0.7vh;
+            z-index: 999;
+            opacity: 0.7;
+            width: fit-content;
+            height: fit-content;
+        }
+
+        #admin {
+            position: fixed;
+            top: 0;
+            right: 0;
+            z-index: 999;
+        }
+
+        /* bars */
+
+        html {
+            font-family: Verdana, "sans-serif";
+        }
+
+        body {
+            min-height: 100vh;
+            background-color: #0c1e35;
+            background-image: url(gpng?svg=pattern-1);
+
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            text-shadow: 0 2px 5px rgba(150, 150, 150, 0.8);
+        }
+        html {
+            font-family: Verdana, "sans-serif";
+        }
+        #left{
+            left:0;
+
+            width: 50%;
+            height: 100%;
+
+            position: absolute;
+            z-index: 15;
+        }
+        #right{
+            right:0;
+
+            width: 50%;
+            height: 100%;
+
+            position: absolute;
+            z-index: 15;
+        }
+        #root {
+            display: flex;
+            flex-wrap: wrap;
+            margin: 1% 1%;
+            justify-content: center;
+    }
+
+        .el {
+           width:fit-content;
+           min-height:64px;
+           padding: 1px 1px;
+           display:inline-block;
+           height: 165px;
+           overflow:hidden;
+           margin:1px;
+
+        }
+        #img {
+        object-fit: cover;
+        width: 165px;
+        height: 165px;
+        border-radius: 5px;
+        }
+
+
+
+        .text-ex-image{
+          display: flex;
+          position: absolute;
+          justify-content: center;
+          align-items: center;
+          width:165px;
+          color:red;
+        }
+
+
+
+        .floatdiv {
+            position: fixed;
+            border-radius: 5px;
+
+            display: grid;
+            height: fit-content;
+            width: fit-content;
+            background: gray;
+            padding: 2px;
+            top:0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+
+            margin: auto;
+            z-index: 10;
+        }
+        .center-fit {
+            max-width: 100%;
+            max-height: 95vh;
+            margin: auto;
+            border-radius: 5px;
+        }
+
+
+
+    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
+
+</head>
+
+<body>
+    <div id="menu-div">
+    <button class="menu-btn" onclick="location.href='/';">
+        <img src="gpng?png=folders" alt="Не загрузилось"  id="menu">
+    </button>
+    </div>
+    <div id="admin">
+    </div>
+    <div id="root">
+
+    </div>
+</body>
+<template id="post_template">
+        <div class="el">
+             <img src="" name="" alt="Не загрузилось"  id="img" style="width: 200px min-height:200px">
+        </div>
+  </template>
+
+<template id="delete_template">
+            <div id="trash-div">
+            <button class="menu-btn"  onclick="">
+                <img src="gpng?png=trash" alt="Не загрузилось"  id="trash">
+            </button>
+            </div>
+  </template>
+
+<template id="deleted_image">
+<div class="text-ex-image" style="/*! order: 1; *//*! position: absolute; */">
+
+    <p>Изображение удалено. Нажмите для восстановления</p>
+
+      </div>
+  </template>
+
+<template id="gallery_template">
+        <div class="floatdiv">
+             <img src="" alt="Не загрузилось"  class="center-fit" style="width: 1024px min-height:768px">
+        <div id="left">
+            <div id="orig-div">
+            <button class="menu-btn" id="original" onclick="downloadImage()">
+                <img src="gpng?png=down" alt="Не загрузилось"  id="down">
+            </button>
+            </div>
+            <div id="left-div">
+            <button class="menu-btn" onclick="">
+                <img src="gpng?png=left" alt="Не загрузилось"  id="lefti">
+            </button>
+            </div>
+
+        </div>
+        <div id="right">
+
+            <div id="close-div">
+            <button class="menu-btn"  onclick="">
+                <img src="gpng?png=close" alt="Не загрузилось"  id="close">
+            </button>
+            </div>
+            <div id="right-div">
+            <button class="menu-btn" onclick="">
+                <img src="gpng?png=right" alt="Не загрузилось"  id="righti">
+            </button>
+            </div>
+
+        </div>
+
+        </div>
+</template>
+
+
+<script type="application/javascript">
+
+    let isLoading = false
+    let shouldLoad = true
+    let page = getPage();
+    const button = document.querySelector("#read-more");
+    const allphotos = {{ imgs|safe }}
+
+    function getCookie(name) {
+      const nameEQ = name + "=";
+      const ca = document.cookie.split(';');
+      for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+      }
+      return null;
+    }
+    function readMore(event) {
+      const main = document.getElementById('root')
+      delelems = document.getElementsByClassName('floatdiv')
+
+
+      if ( delelems.length != 0){
+        photourl = delelems[0].querySelector('img').src
+        const galParams = new URLSearchParams(photourl);
+        const photoinurl = galParams.get('photo');
+        const currentIndex = allphotos.indexOf(photoinurl);
+        if (event.srcElement.id == 'trash'){
+            deleteurl = photourl.replace('urla','urldel')
+            var previevelement = document.getElementsByName(photoinurl);
+            var parentevelement = previevelement[0].parentNode;
+
+            const ditemplate = document.getElementById('deleted_image')
+            parentevelement.insertBefore(ditemplate.content.cloneNode(true), parentevelement.firstChild);
+            previevelement[0].style.opacity= '0.5';
+            fetch(deleteurl)
+            }
+
+        if (event.srcElement.id == 'right' || event.srcElement.id == 'righti' || event.srcElement.id == 'trash'){
+            const nextIndex = (currentIndex + 1) % allphotos.length;
+            nextphoto = allphotos[nextIndex];
+            const nextphotourl = generateurl(nextphoto,'no')
+            delelems[0].querySelector('img').src = nextphotourl
+
+        }
+        else if (event.srcElement.id == 'left' || event.srcElement.id == 'lefti') {
+            const nextIndex = (currentIndex - 1) % allphotos.length;
+            nextphoto = allphotos[nextIndex];
+            const nextphotourl = generateurl(nextphoto,'no')
+            delelems[0].querySelector('img').src = nextphotourl
+
+        }
+
+        else{
+        for (var i = delelems.length - 1; i >= 0; --i) {
+          delelems[i].remove();
+        }}}
+
+      if (event.srcElement.id == 'img'){
+      imgelement = event.srcElement
+      const main = document.getElementById('root')
+      const postNode = createview(imgelement.src)
+      console.log(postNode)
+      if (imgelement.style.opacity == '0.5'){
+        imgelement.style.opacity= '1'
+        imgelement.parentNode.firstElementChild.remove()
+        deleteurl = imgelement.src.replace('urla','urldel')
+        fetch(deleteurl)
+      }
+          const mode = getCookie('mode');
+          if (mode === '1') {
+            const rightdiv = postNode.firstElementChild.children[2]
+            const dltemplate = document.getElementById('delete_template')
+            rightdiv.insertBefore(dltemplate.content.cloneNode(true), rightdiv.firstChild);
+          }
+
+
+      main.append(postNode)
+
+      }
+    }
+
+
+    function * getPage() {
+      const PAGESIZE = 50;
+      let currentPage = 0;
+      while (true) {
+        let curPage = allphotos.slice(currentPage * PAGESIZE, (currentPage + 1) * PAGESIZE)
+        currentPage++;
+        yield curPage;
+      }
+    }
+      function generateurl(srt,previ){
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlget = urlParams.get('urla');
+      const params = new URLSearchParams({
+      urla: urlget+"/"+srt,
+      photo: srt,
+      prev: previ
+        });
+      var urlb = '/list?'+params
+      return urlb
+      }
+
+
+    function appendPost(postData) {
+      if (!postData) return;
+      const main = document.getElementById('root')
+      const postNode = composePost(postData)
+      main.append(postNode)
+    }
+
+    function composePost(postData) {
+      if (!postData) return
+      urlsrc = generateurl(postData,'yes')
+      const template = document.getElementById('post_template')
+      const post = template.content.cloneNode(true)
+      post.querySelector('img').name = postData
+      post.querySelector('img').src = urlsrc
+      return post
+    }
+
+    function createview(imgdata) {
+      if (!imgdata) return
+      const template = document.getElementById('gallery_template')
+      const post = template.content.cloneNode(true)
+      const imggallery = new URL(imgdata);
+      const imgorig = new URL(imgdata);
+      imggallery.searchParams.set('prev', 'no');
+      imgorig.searchParams.set('prev', 'orig');
+      post.querySelector('img').src = imggallery;
+      post.querySelector('#original').setAttribute('onclick',"downloadImage('"+imgorig+ "')");
+      return post
+    }
+
+    function downloadImage(imageUrl) {
+    fetch(imageUrl)
+        .then(response => response.blob())
+        .then(blob => {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            const url = new URL(imageUrl);
+            const params = new URLSearchParams(url.search);
+            const filename = params.get('photo');
+            link.download = filename; // Указываем имя файла
+            document.body.appendChild(link);
+            link.click(); // Программно "нажимаем" на ссылку
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href); // Освобождаем память
+        })
+        .catch(error => console.error('Ошибка при скачивании:', error));
+    }
+
+
+    async function fetchPosts() {
+      if (isLoading || !shouldLoad) return
+      isLoading = true
+      const posts = await page.next().value
+
+      posts.forEach(appendPost)
+
+      // Здесь можно менять адресную строку,
+      // чтобы сохранить положение прокрутки.
+
+      if (posts.length == 0) shouldLoad = false
+      isLoading = false
+    }
+
+    function throttle(callee, timeout) {
+      let timer = null
+
+      return function perform(...args) {
+        if (timer) return
+
+        timer = setTimeout(() => {
+          callee(...args)
+
+          clearTimeout(timer)
+          timer = null
+        }, timeout)
+      }
+    }
+
+    async function checkPosition() {
+      const height = document.body.offsetHeight
+      const screenHeight = window.innerHeight
+      const scrolled = window.scrollY
+
+      const threshold = height - screenHeight / 4
+      const position = scrolled + screenHeight
+
+      if (position >= threshold) {
+        await fetchPosts()
+      }
+    }
+
+    (() => {
+      window.onload = fetchPosts();
+      window.addEventListener('scroll', throttle(checkPosition))
+      window.addEventListener('resize', throttle(checkPosition))
+      window.addEventListener('click', readMore);
+    })()
+
+</script>
+</html>

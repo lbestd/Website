@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Симулятор жидкости с физикой взаимодействия</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            user-select: none;
+            touch-action: manipulation;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #000;
+        }
+
+        #fluidCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            z-index: 1;
+        }
+
+        .status-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            z-index: 2;
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+        }
+
+        .permission-prompt {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            z-index: 3;
+            max-width: 80%;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .permission-prompt h2 {
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        .permission-prompt p {
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        #enableSensors {
+            background: linear-gradient(45deg, #2196F3, #21CBF3);
+            border: none;
+            color: white;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .instructions {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 2;
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+        }
+
+        .debug {
+            position: fixed;
+            bottom: 70px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #0f0;
+            padding: 10px;
+            border-radius: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 2;
+            backdrop-filter: blur(10px);
+        }
+
+        /* Стили для кнопки настроек */
+        .settings-btn {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .settings-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: rotate(45deg);
+        }
+
+        /* Стили для панели настроек */
+        .settings-panel {
+            position: fixed;
+            top: 0;
+            right: -350px;
+            width: 350px;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(20px);
+            z-index: 9;
+            padding: 70px 20px 20px;
+            transition: right 0.3s ease;
+            overflow-y: auto;
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .settings-panel.open {
+            right: 0;
+        }
+
+        .settings-header {
+            font-size: 24px;
+            margin-bottom: 25px;
+            text-align: center;
+            color: #2196F3;
+        }
+
+        .settings-group {
+            margin-bottom: 25px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .settings-title {
+            font-size: 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .settings-title i {
+            margin-right: 10px;
+            font-size: 20px;
+        }
+
+        .slider-container {
+            margin-bottom: 15px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            color: #ccc;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            -webkit-appearance: none;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #2196F3;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(33, 150, 243, 0.5);
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding: 8px 0;
+        }
+
+        .toggle-label {
+            font-size: 16px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.2);
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: #2196F3;
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(24px);
+        }
+
+        .settings-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .settings-btn-action {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .settings-btn-action.primary {
+            background: linear-gradient(45deg, #2196F3, #21CBF3);
+        }
+
+        .settings-btn-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(33, 150, 243, 0.3);
+        }
+
+        @media (max-width: 480px) {
+            .settings-panel {
+                width: 100%;
+                right: -100%;
+            }
+
+            .settings-header {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="status-bar">
+        <span id="sensorStatus">🔴 Акселерометр: неактивен</span>
+        <span id="dropletCount">Капли: 0</span>
+    </div>
+
+    <button class="settings-btn" id="settingsBtn">⚙️</button>
+
+    <div class="settings-panel" id="settingsPanel">
+        <h2 class="settings-header">Настройки симулятора</h2>
+
+        <div class="settings-group">
+            <div class="settings-title"><i>💧</i> Свойства жидкости</div>
+
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>Вязкость</span>
+                    <span id="viscosityValue">0.3</span>
+                </div>
+                <input type="range" id="viscosity" min="0" max="1" step="0.01" value="0.3">
+            </div>
+
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>Гравитация</span>
+                    <span id="gravityValue">0.5</span>
+                </div>
+                <input type="range" id="gravity" min="0" max="2" step="0.1" value="0.5">
+            </div>
+
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>Размер капель</span>
+                    <span id="sizeValue">6</span>
+                </div>
+                <input type="range" id="size" min="1" max="15" step="1" value="6">
+            </div>
+
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>Прозрачность</span>
+                    <span id="opacityValue">0.8</span>
+                </div>
+                <input type="range" id="opacity" min="0.1" max="1" step="0.1" value="0.8">
+            </div>
+        </div>
+
+        <div class="settings-group">
+            <div class="settings-title"><i>🔗</i> Взаимодействие капель</div>
+
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>Сила отталкивания</span>
+                    <span id="repulsionValue">1.5</span>
+                </div>
+                <input type="range" id="repulsion" min="0" max="3" step="0.1" value="1.5">
+            </div>
+
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>Радиус взаимодействия</span>
+                    <span id="interactionRadiusValue">100</span>
+                </div>
+                <input type="range" id="interactionRadius" min="20" max="200" step="5" value="100">
+            </div>
+
+            <div class="toggle-container">
+                <span class="toggle-label">Притяжение на расстоянии</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="enableAttraction" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="settings-group">
+            <div class="settings-title"><i>🔄</i> Настройки акселерометра</div>
+
+            <div class="toggle-container">
+                <span class="toggle-label">Инверсия по X</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="invertX">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <div class="toggle-container">
+                <span class="toggle-label">Инверсия по Y</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="invertY">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>Чувствительность</span>
+                    <span id="sensitivityValue">1.0</span>
+                </div>
+                <input type="range" id="sensitivity" min="0.1" max="3" step="0.1" value="1.0">
+            </div>
+        </div>
+
+        <div class="settings-group">
+            <div class="settings-title"><i>🎨</i> Внешний вид</div>
+
+            <div class="toggle-container">
+                <span class="toggle-label">Тёмный фон</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="darkBackground" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <div class="toggle-container">
+                <span class="toggle-label">Показывать FPS</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="showFPS">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <div class="toggle-container">
+                <span class="toggle-label">Отладочная информация</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="showDebug">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="settings-buttons">
+            <button class="settings-btn-action" id="resetSettings">Сброс</button>
+            <button class="settings-btn-action primary" id="closeSettings">Готово</button>
+        </div>
+    </div>
+
+    <div class="permission-prompt" id="permissionPrompt">
+        <h2>Доступ к акселерометру</h2>
+        <p>Для работы симулятора жидкости необходим доступ к датчикам движения вашего устройства</p>
+        <button id="enableSensors">Разрешить доступ</button>
+    </div>
+
+    <div class="instructions">
+        Наклоняйте устройство для управления жидкостью
+    </div>
+
+    <div class="debug hidden" id="debugInfo"></div>
+
+    <canvas id="fluidCanvas"></canvas>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const canvas = document.getElementById('fluidCanvas');
+            const ctx = canvas.getContext('2d');
+            const permissionPrompt = document.getElementById('permissionPrompt');
+            const enableSensorsBtn = document.getElementById('enableSensors');
+            const sensorStatus = document.getElementById('sensorStatus');
+            const dropletCount = document.getElementById('dropletCount');
+            const debugInfo = document.getElementById('debugInfo');
+            const settingsBtn = document.getElementById('settingsBtn');
+            const settingsPanel = document.getElementById('settingsPanel');
+            const closeSettings = document.getElementById('closeSettings');
+
+            // Установка размеров canvas
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            // Параметры симуляции с настройками по умолчанию
+            let config = {
+                viscosity: 0.3,
+                gravity: 0.5,
+                dropletSize: 6,
+                opacity: 0.8,
+                sensitivity: 1.0,
+                repulsionForce: 1.5,
+                interactionRadius: 100,
+                enableAttraction: true,
+                invertX: false,
+                invertY: false,
+                darkBackground: true,
+                showFPS: false,
+                showDebug: false,
+                maxDroplets: 400, // Уменьшено для производительности
+                accelerometer: {
+                    x: 0,
+                    y: 0,
+                    z: 0,
+                    available: false
+                }
+            };
+
+            // Переменные для FPS
+            let fps = 0;
+            let lastTime = 0;
+            let frameCount = 0;
+
+            // Массив для хранения капель жидкости
+            let droplets = [];
+
+            // Пространственное разбиение для оптимизации
+            const spatialGrid = {};
+            const gridSize = 50;
+
+            // Загрузка настроек из localStorage
+            function loadSettings() {
+                const savedSettings = localStorage.getItem('fluidSimulatorSettings');
+                if (savedSettings) {
+                    const parsed = JSON.parse(savedSettings);
+                    Object.assign(config, parsed);
+
+                    // Обновляем UI в соответствии с загруженными настройками
+                    document.getElementById('viscosity').value = config.viscosity;
+                    document.getElementById('viscosityValue').textContent = config.viscosity.toFixed(2);
+
+                    document.getElementById('gravity').value = config.gravity;
+                    document.getElementById('gravityValue').textContent = config.gravity.toFixed(1);
+
+                    document.getElementById('size').value = config.dropletSize;
+                    document.getElementById('sizeValue').textContent = config.dropletSize;
+
+                    document.getElementById('opacity').value = config.opacity;
+                    document.getElementById('opacityValue').textContent = config.opacity.toFixed(1);
+
+                    document.getElementById('sensitivity').value = config.sensitivity;
+                    document.getElementById('sensitivityValue').textContent = config.sensitivity.toFixed(1);
+
+                    document.getElementById('repulsion').value = config.repulsionForce;
+                    document.getElementById('repulsionValue').textContent = config.repulsionForce.toFixed(1);
+
+                    document.getElementById('interactionRadius').value = config.interactionRadius;
+                    document.getElementById('interactionRadiusValue').textContent = config.interactionRadius;
+
+                    document.getElementById('enableAttraction').checked = config.enableAttraction;
+                    document.getElementById('invertX').checked = config.invertX;
+                    document.getElementById('invertY').checked = config.invertY;
+
+                    document.getElementById('darkBackground').checked = config.darkBackground;
+                    document.getElementById('showFPS').checked = config.showFPS;
+                    document.getElementById('showDebug').checked = config.showDebug;
+
+                    // Показываем/скрываем debug информацию
+                    debugInfo.classList.toggle('hidden', !config.showDebug);
+                }
+            }
+
+            // Сохранение настроек в localStorage
+            function saveSettings() {
+                localStorage.setItem('fluidSimulatorSettings', JSON.stringify(config));
+            }
+
+            // Функции для пространственного разбиения
+            function getGridKey(x, y) {
+                return `${Math.floor(x / gridSize)},${Math.floor(y / gridSize)}`;
+            }
+
+            function updateSpatialGrid() {
+                // Очищаем сетку
+                for (let key in spatialGrid) {
+                    delete spatialGrid[key];
+                }
+
+                // Заполняем сетку каплями
+                for (let i = 0; i < droplets.length; i++) {
+                    const droplet = droplets[i];
+                    const key = getGridKey(droplet.x, droplet.y);
+
+                    if (!spatialGrid[key]) {
+                        spatialGrid[key] = [];
+                    }
+
+                    spatialGrid[key].push(droplet);
+                }
+            }
+
+            // Класс для капель жидкости
+            class Droplet {
+                constructor(x, y, size) {
+                    this.x = x;
+                    this.y = y;
+                    this.size = size;
+                    this.vx = (Math.random() - 0.5) * 2;
+                    this.vy = (Math.random() - 0.5) * 2;
+                    this.color = this.generateColor();
+                    this.createdAt = Date.now();
+                    this.lifespan = 30000; // 30 секунд
+                }
+
+                generateColor() {
+                    const hue = Math.random() * 360;
+                    return `hsla(${hue}, 80%, 60%, ${config.opacity})`;
+                }
+
+                update() {
+                    // Применяем гравитацию и акселерометр с учетом инверсии и чувствительности
+                    let accelX = config.accelerometer.x * config.sensitivity;
+                    let accelY = config.accelerometer.y * config.sensitivity;
+
+                    if (config.invertX) accelX = -accelX;
+                    if (config.invertY) accelY = -accelY;
+
+                    this.vx += accelX * 0.2;
+                    this.vy += accelY * 0.2 + config.gravity * 0.1;
+
+                    // Применяем вязкость
+                    this.vx *= (1 - config.viscosity * 0.05);
+                    this.vy *= (1 - config.viscosity * 0.05);
+
+                    // Взаимодействие с другими каплями
+                    this.applyDropletInteractions();
+
+                    // Обновляем позицию
+                    this.x += this.vx;
+                    this.y += this.vy;
+
+                    // Проверяем границы canvas
+                    if (this.x < this.size) {
+                        this.x = this.size;
+                        this.vx *= -0.8;
+                    } else if (this.x > canvas.width - this.size) {
+                        this.x = canvas.width - this.size;
+                        this.vx *= -0.8;
+                    }
+
+                    if (this.y < this.size) {
+                        this.y = this.size;
+                        this.vy *= -0.8;
+                    } else if (this.y > canvas.height - this.size) {
+                        this.y = canvas.height - this.size;
+                        this.vy *= -0.8;
+                    }
+
+                    // Проверяем срок жизни
+                    return Date.now() - this.createdAt < this.lifespan;
+                }
+
+                applyDropletInteractions() {
+                    const key = getGridKey(this.x, this.y);
+                    const nearbyCells = [
+                        key,
+                        getGridKey(this.x - config.interactionRadius, this.y),
+                        getGridKey(this.x + config.interactionRadius, this.y),
+                        getGridKey(this.x, this.y - config.interactionRadius),
+                        getGridKey(this.x, this.y + config.interactionRadius)
+                    ];
+
+                    // Убираем дубликаты
+                    const uniqueCells = [...new Set(nearbyCells)];
+
+                    for (const cellKey of uniqueCells) {
+                        if (spatialGrid[cellKey]) {
+                            for (let i = 0; i < spatialGrid[cellKey].length; i++) {
+                                const other = spatialGrid[cellKey][i];
+
+                                if (other === this) continue;
+
+                                const dx = this.x - other.x;
+                                const dy = this.y - other.y;
+                                const distance = Math.sqrt(dx * dx + dy * dy);
+                                const minDistance = this.size + other.size;
+
+                                if (distance < config.interactionRadius && distance > 0) {
+                                    // Нормализованный вектор направления
+                                    const nx = dx / distance;
+                                    const ny = dy / distance;
+
+                                    if (distance < minDistance) {
+                                        // Отталкивание при столкновении
+                                        const force = (minDistance - distance) * 0.1 * config.repulsionForce;
+                                        this.vx += nx * force;
+                                        this.vy += ny * force;
+                                    } else if (config.enableAttraction && distance < config.interactionRadius * 0.5) {
+                                        // Слабое притяжение на средних расстояниях
+                                        const force = (1 - distance / (config.interactionRadius * 0.5)) * 0.02;
+                                        this.vx -= nx * force;
+                                        this.vy -= ny * force;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                draw() {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fillStyle = this.color;
+                    ctx.fill();
+
+                    // Добавляем блик для эффекта жидкости
+                    ctx.beginPath();
+                    ctx.arc(
+                        this.x - this.size * 0.3,
+                        this.y - this.size * 0.3,
+                        this.size * 0.4,
+                        0,
+                        Math.PI * 2
+                    );
+                    ctx.fillStyle = `rgba(255, 255, 255, ${config.opacity * 0.5})`;
+                    ctx.fill();
+                }
+            }
+
+            // Функция для добавления жидкости
+            function addLiquid(x, y, amount = 5) {
+                for (let i = 0; i < amount; i++) {
+                    if (droplets.length >= config.maxDroplets) {
+                        droplets.shift(); // Удаляем старые капли
+                    }
+
+                    const size = Math.random() * config.dropletSize + 2;
+                    const droplet = new Droplet(
+                        x + (Math.random() - 0.5) * 20,
+                        y + (Math.random() - 0.5) * 20,
+                        size
+                    );
+
+                    // Начальная скорость в зависимости от акселерометра
+                    let accelX = config.accelerometer.x * config.sensitivity;
+                    let accelY = config.accelerometer.y * config.sensitivity;
+
+                    if (config.invertX) accelX = -accelX;
+                    if (config.invertY) accelY = -accelY;
+
+                    droplet.vx = accelX * 2 + (Math.random() - 0.5) * 2;
+                    droplet.vy = accelY * 2 + (Math.random() - 0.5) * 2;
+
+                    droplets.push(droplet);
+                }
+                dropletCount.textContent = `Капли: ${droplets.length}`;
+            }
+
+            // Основной цикл анимации
+            function animate(currentTime) {
+                // Расчет FPS
+                if (!lastTime) lastTime = currentTime;
+                frameCount++;
+
+                if (currentTime - lastTime >= 1000) {
+                    fps = frameCount;
+                    frameCount = 0;
+                    lastTime = currentTime;
+                }
+
+                // Очищаем canvas
+                if (config.darkBackground) {
+                    ctx.fillStyle = 'rgba(0, 10, 20, 0.2)';
+                } else {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                }
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Обновляем пространственное разбиение
+                updateSpatialGrid();
+
+                // Обновляем и рисуем все капли
+                droplets = droplets.filter(droplet => {
+                    const isAlive = droplet.update();
+                    if (isAlive) {
+                        droplet.draw();
+                    }
+                    return isAlive;
+                });
+
+                dropletCount.textContent = `Капли: ${droplets.length}`;
+
+                // Показываем FPS если включено
+                if (config.showFPS) {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                    ctx.font = '14px monospace';
+                    ctx.fillText(`FPS: ${fps}`, 10, 50);
+                }
+
+                // Автоматически добавляем капли, если акселерометр активен
+                if (config.accelerometer.available && droplets.length < config.maxDroplets / 2) {
+                    addLiquid(
+                        canvas.width / 2 + (Math.random() - 0.5) * 100,
+                        canvas.height / 4,
+                        2
+                    );
+                }
+
+                requestAnimationFrame(animate);
+            }
+
+            // Запускаем анимацию
+            requestAnimationFrame(animate);
+
+            // Обработчики для акселерометра
+            function handleDeviceMotion(event) {
+                const acceleration = event.accelerationIncludingGravity;
+
+                if (acceleration) {
+                    config.accelerometer.x = acceleration.x ? acceleration.x / 10 : 0;
+                    config.accelerometer.y = acceleration.y ? acceleration.y / 10 : 0;
+                    config.accelerometer.z = acceleration.z ? acceleration.z / 10 : 0;
+                    config.accelerometer.available = true;
+
+                    sensorStatus.textContent = `🟢 Акселерометр: активен`;
+                    sensorStatus.style.color = '#0f0';
+
+                    // Обновляем отладочную информацию
+                    if (config.showDebug) {
+                        debugInfo.innerHTML = `
+                            X: ${config.accelerometer.x.toFixed(2)}<br>
+                            Y: ${config.accelerometer.y.toFixed(2)}<br>
+                            Z: ${config.accelerometer.z.toFixed(2)}<br>
+                            Капли: ${droplets.length}<br>
+                            FPS: ${fps}
+                        `;
+                    }
+                }
+            }
+
+            function requestSensorPermission() {
+                if (typeof DeviceMotionEvent !== 'undefined' &&
+                    typeof DeviceMotionEvent.requestPermission === 'function') {
+
+                    DeviceMotionEvent.requestPermission()
+                        .then(permissionState => {
+                            if (permissionState === 'granted') {
+                                window.addEventListener('devicemotion', handleDeviceMotion);
+                                permissionPrompt.classList.add('hidden');
+                                config.accelerometer.available = true;
+
+                                // Добавляем начальные капли
+                                for (let i = 0; i < 30; i++) {
+                                    addLiquid(
+                                        Math.random() * canvas.width,
+                                        Math.random() * canvas.height,
+                                        1
+                                    );
+                                }
+                            }
+                        })
+                        .catch(console.error);
+                } else {
+                    // Для браузеров, которые не требуют разрешения
+                    window.addEventListener('devicemotion', handleDeviceMotion);
+                    permissionPrompt.classList.add('hidden');
+                    config.accelerometer.available = true;
+
+                    // Добавляем начальные капли
+                    for (let i = 0; i < 30; i++) {
+                        addLiquid(
+                            Math.random() * canvas.width,
+                            Math.random() * canvas.height,
+                            1
+                        );
+                    }
+                }
+            }
+
+            // Инициализация UI обработчиков
+            function initUI() {
+                // Загрузка настроек
+                loadSettings();
+
+                // Обработчики слайдеров
+                document.getElementById('viscosity').addEventListener('input', function(e) {
+                    config.viscosity = parseFloat(e.target.value);
+                    document.getElementById('viscosityValue').textContent = config.viscosity.toFixed(2);
+                    saveSettings();
+                });
+
+                document.getElementById('gravity').addEventListener('input', function(e) {
+                    config.gravity = parseFloat(e.target.value);
+                    document.getElementById('gravityValue').textContent = config.gravity.toFixed(1);
+                    saveSettings();
+                });
+
+                document.getElementById('size').addEventListener('input', function(e) {
+                    config.dropletSize = parseFloat(e.target.value);
+                    document.getElementById('sizeValue').textContent = config.dropletSize;
+                    saveSettings();
+                });
+
+                document.getElementById('opacity').addEventListener('input', function(e) {
+                    config.opacity = parseFloat(e.target.value);
+                    document.getElementById('opacityValue').textContent = config.opacity.toFixed(1);
+                    saveSettings();
+                });
+
+                document.getElementById('sensitivity').addEventListener('input', function(e) {
+                    config.sensitivity = parseFloat(e.target.value);
+                    document.getElementById('sensitivityValue').textContent = config.sensitivity.toFixed(1);
+                    saveSettings();
+                });
+
+                document.getElementById('repulsion').addEventListener('input', function(e) {
+                    config.repulsionForce = parseFloat(e.target.value);
+                    document.getElementById('repulsionValue').textContent = config.repulsionForce.toFixed(1);
+                    saveSettings();
+                });
+
+                document.getElementById('interactionRadius').addEventListener('input', function(e) {
+                    config.interactionRadius = parseFloat(e.target.value);
+                    document.getElementById('interactionRadiusValue').textContent = config.interactionRadius;
+                    saveSettings();
+                });
+
+                // Обработчики переключателей
+                document.getElementById('enableAttraction').addEventListener('change', function(e) {
+                    config.enableAttraction = e.target.checked;
+                    saveSettings();
+                });
+
+                document.getElementById('invertX').addEventListener('change', function(e) {
+                    config.invertX = e.target.checked;
+                    saveSettings();
+                });
+
+                document.getElementById('invertY').addEventListener('change', function(e) {
+                    config.invertY = e.target.checked;
+                    saveSettings();
+                });
+
+                document.getElementById('darkBackground').addEventListener('change', function(e) {
+                    config.darkBackground = e.target.checked;
+                    saveSettings();
+                });
+
+                document.getElementById('showFPS').addEventListener('change', function(e) {
+                    config.showFPS = e.target.checked;
+                    saveSettings();
+                });
+
+                document.getElementById('showDebug').addEventListener('change', function(e) {
+                    config.showDebug = e.target.checked;
+                    debugInfo.classList.toggle('hidden', !config.showDebug);
+                    saveSettings();
+                });
+
+                // Кнопка сброса настроек
+                document.getElementById('resetSettings').addEventListener('click', function() {
+                    if (confirm('Сбросить все настройки к значениям по умолчанию?')) {
+                        localStorage.removeItem('fluidSimulatorSettings');
+                        location.reload();
+                    }
+                });
+
+                // Кнопка открытия/закрытия настроек
+                settingsBtn.addEventListener('click', function() {
+                    settingsPanel.classList.toggle('open');
+                });
+
+                closeSettings.addEventListener('click', function() {
+                    settingsPanel.classList.remove('open');
+                });
+
+                // Закрытие настроек при клике вне панели
+                document.addEventListener('click', function(e) {
+                    if (settingsPanel.classList.contains('open') &&
+                        !settingsPanel.contains(e.target) &&
+                        e.target !== settingsBtn) {
+                        settingsPanel.classList.remove('open');
+                    }
+                });
+
+                // Запрос разрешения при клике на кнопку
+                enableSensorsBtn.addEventListener('click', requestSensorPermission);
+
+                // Добавляем капли при клике на экран
+                canvas.addEventListener('click', function(e) {
+                    addLiquid(e.clientX, e.clientY, 15);
+                });
+
+                // Добавляем капли при движении с зажатой кнопкой
+                canvas.addEventListener('mousemove', function(e) {
+                    if (e.buttons === 1) {
+                        addLiquid(e.clientX, e.clientY, 2);
+                    }
+                });
+
+                // Для touch устройств
+                canvas.addEventListener('touchmove', function(e) {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    addLiquid(touch.clientX, touch.clientY, 3);
+                }, { passive: false });
+
+                // Предотвращаем скроллинг на touch устройствах
+                document.body.addEventListener('touchmove', function(e) {
+                    if (e.target === canvas) {
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+            }
+
+            // Инициализация приложения
+            initUI();
+
+            // Проверяем, поддерживаются ли датчики
+            if (!('DeviceMotionEvent' in window)) {
+                permissionPrompt.querySelector('p').textContent =
+                    'Ваш браузер не поддерживает датчики движения. Симулятор будет работать без акселерометра.';
+                config.accelerometer.available = false;
+                sensorStatus.textContent = '🔴 Акселерометр: не поддерживается';
+            }
+        });
+    </script>
+</body>
+</html>

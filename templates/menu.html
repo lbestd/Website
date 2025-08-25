@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{title}}</title>
+<style id="INLINE_PEN_STYLESHEET_ID">
+    .layout {
+  z-index: 1;
+}
+.layout .header {
+  box-shadow: 1px 1px 4px #9aa0b9;
+  display: flex;
+  align-items: center;
+  padding: 20px;
+}
+.layout .content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+.layout .footer {
+  text-align: center;
+  margin-top: auto;
+  margin-bottom: 20px;
+  padding: 20px;
+}
+.layout.rtl .header {
+  box-shadow: -1px 1px 4px #9aa0b9;
+}
+
+.sidebar {
+  color: #b3b8d4;
+  overflow-x: hidden !important;
+  position: relative;
+  background-color: #0c1e35;
+}
+.sidebar .sidebar-layout {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 2;
+}
+
+.sidebar .sidebar-layout .sidebar-header > span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.sidebar .sidebar-layout .sidebar-content {
+  flex-grow: 1;
+  padding: 10px 0;
+}
+.sidebar .sidebar-layout .sidebar-footer {
+  height: 64px;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  border-top: 1px solid rgba(83, 93, 125, 0.3);
+  padding: 0 20px;
+}
+.sidebar .sidebar-layout .sidebar-footer > span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.layout .sidebar .menu ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+@media screen and (min-width: 1024px){
+.layout .sidebar .menu .menu-item a {
+  display: flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 20px;
+  color: #b3b8d4;
+}
+}
+
+@media screen and (min-width : 0px) and (max-width : 1023px){
+.layout .sidebar .menu .menu-item a {
+  display: flex;
+  align-items: center;
+  height: 130px;
+  padding: 0 20px;
+  color: #b3b8d4;
+}
+}
+
+
+
+.layout .sidebar .menu .menu-item a .menu-title {
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-grow: 1;
+  transition: color 0.3s;
+}
+.layout .sidebar .menu .menu-item div a .menu-title {
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-grow: 1;
+  transition: color 0.3s;
+}
+.layout .sidebar .menu .menu-item a .menu-prefix,
+.layout .sidebar .menu .menu-item a .menu-suffix {
+  display: inline-block;
+  padding: 5px;
+  opacity: 1;
+  transition: opacity 0.3s;
+}
+.layout .sidebar .menu .menu-item a:hover .menu-title {
+  color: #dee2ec;
+}
+.layout .sidebar .menu .menu-item a:hover .menu-icon {
+  color: #dee2ec;
+}
+.layout .sidebar .menu .menu-item a:hover .menu-icon i {
+  animation: swing ease-in-out 0.5s 1 alternate;
+}
+.layout .sidebar .menu .menu-item a:hover::after {
+  border-color: #dee2ec !important;
+}
+.layout .sidebar .menu .menu-item.sub-menu {
+  position: relative;
+}
+
+
+
+
+@media screen and (min-width: 1024px){
+.layout .sidebar .menu .menu-item.sub-menu > a::after {
+  content: "";
+  transition: transform 0.3s;
+  border-right: 2px solid currentcolor;
+  border-bottom: 2px solid currentcolor;
+  width: 10px;
+  height: 10px;
+  transform: rotate(-45deg);
+}
+}
+
+@media screen and (min-width : 0px) and (max-width : 1023px){
+.layout .sidebar .menu .menu-item.sub-menu > a::after {
+  content: "";
+  transition: transform 0.3s;
+  border-right: 2px solid currentcolor;
+  border-bottom: 2px solid currentcolor;
+  width: 35px;
+  height: 35px;
+  transform: rotate(-45deg);
+}
+}
+
+
+.layout .sidebar .menu .menu-item.sub-menu > .sub-menu-list {
+  padding-left: 20px;
+  display: none;
+  overflow: hidden;
+  z-index: 999;
+}
+.layout .sidebar .menu .menu-item.sub-menu.open > a::after {
+  transform: rotate(45deg);
+}
+.layout .sidebar .menu .menu-item.active > a .menu-title {
+  color: #dee2ec;
+}
+.layout .sidebar .menu .menu-item.active > a::after {
+  border-color: #dee2ec;
+}
+.layout .sidebar .menu .menu-item.active > a .menu-icon {
+  color: #dee2ec;
+}
+.layout .sidebar .menu > ul > .sub-menu > .sub-menu-list {
+  background-color: #0b1a2c;
+}
+.layout .sidebar .menu.icon-shape-circle .menu-item a .menu-icon, .layout .sidebar .menu.icon-shape-rounded .menu-item a .menu-icon, .layout .sidebar .menu.icon-shape-square .menu-item a .menu-icon {
+  background-color: #0b1a2c;
+}
+.layout .sidebar .menu.icon-shape-circle .menu-item a .menu-icon {
+  border-radius: 50%;
+}
+.layout .sidebar .menu.icon-shape-rounded .menu-item a .menu-icon {
+  border-radius: 4px;
+}
+.layout .sidebar .menu.icon-shape-square .menu-item a .menu-icon {
+  border-radius: 0;
+}
+.layout .sidebar:not(.collapsed) .menu > ul > .menu-item.sub-menu > .sub-menu-list {
+  visibility: visible !important;
+  position: static !important;
+  transform: translate(0, 0) !important;
+}
+.layout .sidebar.collapsed .menu > ul > .menu-item > a .menu-prefix,
+.layout .sidebar.collapsed .menu > ul > .menu-item > a .menu-suffix {
+  opacity: 0;
+}
+.layout .sidebar.collapsed .menu > ul > .menu-item.sub-menu > a::after {
+  content: "";
+  width: 5px;
+  height: 5px;
+  background-color: currentcolor;
+  border-radius: 50%;
+  display: inline-block;
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  border: none;
+  transform: translateY(-50%);
+}
+.layout .sidebar.collapsed .menu > ul > .menu-item.sub-menu > a:hover::after {
+  background-color: #dee2ec;
+}
+.layout .sidebar.collapsed .menu > ul > .menu-item.sub-menu > .sub-menu-list {
+  transition: none !important;
+  width: 200px;
+  margin-left: 3px !important;
+  border-radius: 4px;
+  display: block !important;
+}
+.layout .sidebar.collapsed .menu > ul > .menu-item.active > a::after {
+  background-color: #dee2ec;
+}
+.layout .sidebar.has-bg-image .menu.icon-shape-circle .menu-item a .menu-icon, .layout .sidebar.has-bg-image .menu.icon-shape-rounded .menu-item a .menu-icon, .layout .sidebar.has-bg-image .menu.icon-shape-square .menu-item a .menu-icon {
+  background-color: rgba(11, 26, 44, 0.6);
+}
+.layout .sidebar.has-bg-image:not(.collapsed) .menu > ul > .sub-menu > .sub-menu-list {
+  background-color: rgba(11, 26, 44, 0.6);
+}
+.layout.rtl .sidebar .menu .menu-item a .menu-icon {
+  margin-left: 10px;
+  margin-right: 0;
+}
+.layout.rtl .sidebar .menu .menu-item.sub-menu > a::after {
+  transform: rotate(135deg);
+}
+.layout.rtl .sidebar .menu .menu-item.sub-menu > .sub-menu-list {
+  padding-left: 0;
+  padding-right: 20px;
+}
+.layout.rtl .sidebar .menu .menu-item.sub-menu.open > a::after {
+  transform: rotate(45deg);
+}
+.layout.rtl .sidebar.collapsed .menu > ul > .menu-item.sub-menu a::after {
+  right: auto;
+  left: 10px;
+}
+.layout.rtl .sidebar.collapsed .menu > ul > .menu-item.sub-menu > .sub-menu-list {
+  margin-left: -3px !important;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+
+
+@media screen and (min-width: 1024px){
+body {
+  margin: 0;
+  height: 100vh;
+  font-family: "Roboto", sans-serif;
+  color: #212529;
+  font-size: 1rem;
+}
+}
+
+@media screen and (min-width : 0px) and (max-width : 1023px){
+  body {
+  margin: 0;
+  height: 100vh;
+  font-family: "Roboto", sans-serif;
+  color: #212529;
+  font-size: 5rem;
+
+}
+}
+
+
+a {
+  text-decoration: none;
+}
+
+  </style>
+</head>
+<body>
+  <div class="layout has-sidebar fixed-sidebar fixed-header">
+  <aside id="sidebar" class="sidebar break-point-lg has-bg-image">
+
+    <div class="sidebar-layout">
+      <div class="sidebar-header">
+
+      </div>
+      <div class="sidebar-content">
+        <nav class="menu open-current-submenu" id="generator">
+
+        </nav>
+      </div>
+      <div class="sidebar-footer">
+          <label for="modeCheckbox">
+            <input type="checkbox" id="modeCheckbox"> Режим редактирования
+        </label>
+      </div>
+    </div>
+  </aside>
+  <div id="overlay" class="overlay"></div>
+
+  </div>
+</div>
+</body>
+
+<template id="post_template">
+    <a id="hr" href="#" >
+        <span id="nm" class="menu-title"></span>
+    </a>
+
+  </template>
+
+
+
+<script type="application/javascript">
+const alldir = {{ dirlist|tojson }}
+
+
+
+function setCookie(name, value, days) {
+  let expires = "";
+  if (days) {
+    const date = new Date();
+    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+    expires = "; expires=" + date.toUTCString();
+  }
+  document.cookie = name + "=" + (value || "") + expires + "; path=/";
+}
+function getCookie(name) {
+  const nameEQ = name + "=";
+  const ca = document.cookie.split(';');
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+    if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+  }
+  return null;
+}
+const mode = getCookie('mode');
+  if (mode === '1') {
+    document.getElementById('modeCheckbox').checked = true;
+    // Дополнительный код для включения режима
+  } else {
+    document.getElementById('modeCheckbox').checked = false;
+    // Дополнительный код для выключения режима
+  }
+var myTarget = document.getElementById('generator');
+myTarget.appendChild(renderList(alldir,'no'));
+
+
+document.getElementById('modeCheckbox').addEventListener('change', function() {
+  if (this.checked) {
+    setCookie('mode', '1', 7); // Устанавливаем куку на 7 дней со значением 1
+  } else {
+    setCookie('mode', '0', 7); // Устанавливаем куку на 7 дней со значением 0
+  }
+});
+
+function renderList(obj,ischild) {
+
+  function formatPrice(str) {
+    var result = '$';
+    if (parseFloat(str) < 1) result += '0';
+    return result + str;
+  }
+  function generateurl(srt){
+  const params = new URLSearchParams({
+  urla: srt
+    });
+  var urlb = 'preview?'+params
+  return urlb
+  }
+  console.log(ischild)
+
+  if (ischild === 'child'){
+  var result = document.createElement('div');
+  result.className="sub-menu-list"
+  var ul = document.createElement('ul');
+  result.append(ul)
+  }else{
+  var result = document.createElement('ul');
+  }
+  for (key in obj) {
+    const template = document.getElementById('post_template')
+    var list = document.createElement('li')
+    const post = template.content.cloneNode(true)
+    if (typeof obj[key]['sdir'] === 'object' && Object.keys(obj[key]['sdir']).length > 0) {
+    list.className="menu-item sub-menu"
+    }else{
+    list.className="menu-item"
+    post.getElementById('hr').href = generateurl(obj[key]['dir'])
+    }
+    var linkText = document.createTextNode(key);
+    post.getElementById('nm').appendChild(linkText);
+    list.appendChild(post);
+
+
+  if (typeof obj[key]['sdir'] === 'object' && Object.keys(obj[key]['sdir']).length > 0) {
+      list.appendChild(renderList(obj[key]['sdir'],'child'));
+  } else {
+  }
+  result.appendChild(list);
+  }
+  return result;
+}
+
+const ANIMATION_DURATION = 300;
+
+const SIDEBAR_EL = document.getElementById("sidebar");
+
+const SUB_MENU_ELS = document.querySelectorAll(
+  ".menu > ul > .menu-item.sub-menu"
+);
+
+const FIRST_SUB_MENUS_BTN = document.querySelectorAll(
+  ".menu > ul > .menu-item.sub-menu > a"
+);
+
+const INNER_SUB_MENUS_BTN = document.querySelectorAll(
+  ".menu > ul > .menu-item.sub-menu .menu-item.sub-menu > a"
+);
+
+
+const slideUp = (target, duration = ANIMATION_DURATION) => {
+  const { parentElement } = target;
+  parentElement.classList.remove("open");
+  target.style.transitionProperty = "height, margin, padding";
+  target.style.transitionDuration = `${duration}ms`;
+  target.style.boxSizing = "border-box";
+  target.style.height = `${target.offsetHeight}px`;
+  target.offsetHeight;
+  target.style.overflow = "hidden";
+  target.style.height = 0;
+  target.style.paddingTop = 0;
+  target.style.paddingBottom = 0;
+  target.style.marginTop = 0;
+  target.style.marginBottom = 0;
+  window.setTimeout(() => {
+    target.style.display = "none";
+    target.style.removeProperty("height");
+    target.style.removeProperty("padding-top");
+    target.style.removeProperty("padding-bottom");
+    target.style.removeProperty("margin-top");
+    target.style.removeProperty("margin-bottom");
+    target.style.removeProperty("overflow");
+    target.style.removeProperty("transition-duration");
+    target.style.removeProperty("transition-property");
+  }, duration);
+};
+const slideDown = (target, duration = ANIMATION_DURATION) => {
+  const { parentElement } = target;
+  parentElement.classList.add("open");
+  target.style.removeProperty("display");
+  let { display } = window.getComputedStyle(target);
+  if (display === "none") display = "block";
+  target.style.display = display;
+  const height = target.offsetHeight;
+  target.style.overflow = "hidden";
+  target.style.height = 0;
+  target.style.paddingTop = 0;
+  target.style.paddingBottom = 0;
+  target.style.marginTop = 0;
+  target.style.marginBottom = 0;
+  target.offsetHeight;
+  target.style.boxSizing = "border-box";
+  target.style.transitionProperty = "height, margin, padding";
+  target.style.transitionDuration = `${duration}ms`;
+  target.style.height = `${height}px`;
+  target.style.removeProperty("padding-top");
+  target.style.removeProperty("padding-bottom");
+  target.style.removeProperty("margin-top");
+  target.style.removeProperty("margin-bottom");
+  window.setTimeout(() => {
+    target.style.removeProperty("height");
+    target.style.removeProperty("overflow");
+    target.style.removeProperty("transition-duration");
+    target.style.removeProperty("transition-property");
+  }, duration);
+};
+
+const slideToggle = (target, duration = ANIMATION_DURATION) => {
+  if (window.getComputedStyle(target).display === "none")
+    return slideDown(target, duration);
+  return slideUp(target, duration);
+};
+
+
+/**
+ * sidebar toggle handler (on break point )
+ */
+
+
+
+/**
+ * toggle sidebar on overlay click
+ */
+document.getElementById("overlay").addEventListener("click", () => {
+  SIDEBAR_EL.classList.toggle("toggled");
+});
+
+const defaultOpenMenus = document.querySelectorAll(".menu-item.sub-menu.open");
+
+defaultOpenMenus.forEach((element) => {
+  element.lastElementChild.style.display = "block";
+});
+
+/**
+ * handle top level submenu click
+ */
+FIRST_SUB_MENUS_BTN.forEach((element) => {
+  element.addEventListener("click", () => {
+    console.log('click')
+    if (SIDEBAR_EL.classList.contains("collapsed"))
+    {}
+    else{
+      const parentMenu = element.closest(".menu.open-current-submenu");
+      if (parentMenu)
+        parentMenu
+          .querySelectorAll(":scope > ul > .menu-item.sub-menu > a")
+          .forEach(
+            (el) =>
+              window.getComputedStyle(el.nextElementSibling).display !==
+                "none" && slideUp(el.nextElementSibling)
+          );
+      slideToggle(element.nextElementSibling);
+    }
+  });
+});
+
+/**
+ * handle inner submenu click
+ */
+INNER_SUB_MENUS_BTN.forEach((element) => {
+  element.addEventListener("click", () => {
+    slideToggle(element.nextElementSibling);
+  });
+});
+
+</script>
+</html>

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{title}}</title>
+    <style>
+
+        #menu-btn {
+          height: 100px;           /* set size */
+          width: 100px;
+          display: flex;           /* arrange spans (bars) in a column layout */
+          flex-direction: column;
+          justify-content: center;
+          gap: 15px;
+            border: none;
+
+          background-color: transparent;
+        }
+        #menu-div {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 999;
+        }
+        #admin {
+            position: fixed;
+            top: 0;
+            right: 0;
+            z-index: 999;
+        }
+
+        /* bars */
+        #menu-btn span {
+          border-radius: 20px;
+          height: 15px;         /* set an arbitrary height */
+          width: 100%;          /* set them to be 100% width of the menu button */
+          background: #b3b8d4;  /* arbitrarily color span black */
+        }
+        html {
+            font-family: Verdana, "sans-serif";
+        }
+
+        body {
+            min-height: 100vh;
+            background-color: #0c1e35;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            text-shadow: 0 2px 5px rgba(150, 150, 150, 0.8);
+        }
+        html {
+            font-family: Verdana, "sans-serif";
+        }
+        #root {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .csscolumn {
+           display: grid;
+           grid-template-columns: repeat(auto-fill, minmax(1024px, 1fr));
+        }
+        .el {
+           width:1024px;
+           min-height:640px;
+           padding: 2px 2px;
+           font-size: 21px;
+           color: #fff;
+        }
+
+    </style>
+</head>
+
+<body>
+    <div id="menu-div">
+    <button id="menu-btn" onclick="location.href='/';">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    </div>
+    <div id="admin">
+     <button id="read-more">NEXT</button>
+    </div>
+    <div id="root">
+
+    </div>
+</body>
+<template id="post_template">
+        <div class="el">
+             <img src="" alt="Не загрузилось"  id="img" style="width: 200px min-height:200px">
+        </div>
+  </template>
+
+
+<script type="application/javascript">
+
+    let isLoading = false
+    let shouldLoad = true
+    let page = getPage();
+    const button = document.querySelector("#read-more");
+    const allphotos = {{ imgs|safe }}
+
+    function readMore() {
+      var divsc = document.getElementsByClassName('el active')
+      if (divsc.length == '0'){
+        divsc = document.getElementsByClassName('el');
+        }
+      curel = divsc[0]
+      console.log(1, curel)
+
+
+      curel.classList.remove('active');
+      console.log(2, curel)
+      var divnext =  curel.nextElementSibling;
+      console.log(3, divnext)
+
+      divnext.classList.add('active');
+      divnext.scrollIntoView({
+        behavior: 'smooth'
+    });
+
+    }
+
+
+    function * getPage() {
+      const PAGESIZE = 4;
+      let currentPage = 0;
+      while (true) {
+        let curPage = allphotos.slice(currentPage * PAGESIZE, (currentPage + 1) * PAGESIZE)
+        currentPage++;
+        yield curPage;
+      }
+    }
+      function generateurl(srt){
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlget = urlParams.get('urla');
+      const params = new URLSearchParams({
+      urla: urlget+"/"+srt,
+      prev: 'no'
+        });
+      var urlb = '/list?'+params
+      return urlb
+      }
+
+
+    function appendPost(postData) {
+      if (!postData) return;
+
+      const main = document.getElementById('root')
+      const postNode = composePost(generateurl(postData))
+      main.append(postNode)
+    }
+
+    function composePost(postData) {
+      if (!postData) return
+      const template = document.getElementById('post_template')
+      const post = template.content.cloneNode(true)
+
+      //const {title, body, likes, reposts} = postData
+      post.querySelector('img').src = postData
+
+      //console.log(post)
+      return post
+    }
+
+    async function fetchPosts() {
+      if (isLoading || !shouldLoad) return
+      isLoading = true
+      const posts = await page.next().value
+
+      posts.forEach(appendPost)
+
+      // Здесь можно менять адресную строку,
+      // чтобы сохранить положение прокрутки.
+
+      if (posts.length == 0) shouldLoad = false
+      isLoading = false
+    }
+
+    function throttle(callee, timeout) {
+      let timer = null
+
+      return function perform(...args) {
+        if (timer) return
+
+        timer = setTimeout(() => {
+          callee(...args)
+
+          clearTimeout(timer)
+          timer = null
+        }, timeout)
+      }
+    }
+
+    async function checkPosition() {
+      const height = document.body.offsetHeight
+      const screenHeight = window.innerHeight
+      const scrolled = window.scrollY
+
+      const threshold = height - screenHeight / 4
+      const position = scrolled + screenHeight
+
+      if (position >= threshold) {
+        await fetchPosts()
+      }
+    }
+
+    (() => {
+      window.onload = fetchPosts();
+      window.addEventListener('scroll', throttle(checkPosition))
+      window.addEventListener('resize', throttle(checkPosition))
+      button.addEventListener("click", readMore);
+    })()
+
+</script>
+</html>
