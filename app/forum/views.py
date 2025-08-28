@@ -25,6 +25,15 @@ async def index(request):
         imgs = list(filter(re.compile(r'.*(JPG|jpg|jpeg|JPEG)').match, imgs))
         ptintimgs = [i.split('/')[-1] for i in imgs]
         return {'title': 'photos','pathf':pathf,'imgs' : ptintimgs,}
+    else:
+        # Показываем список каталогов
+        folders = []
+        for item in os.listdir(dir):
+            item_path = os.path.join(dir, item)
+            if os.path.isdir(item_path):
+                folders.append(item)
+        folders.sort()
+        return {'title': 'Галерея', 'folders': folders}
 @auth.required
 @aiohttp_jinja2.template("preview.html")
 async def preview(request):
