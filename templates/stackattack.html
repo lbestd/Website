@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Stack Attack</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background: #1a1a1a;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    min-height: 100vh;
+    touch-action: none; user-select: none; -webkit-user-select: none;
+}
+#back { position: fixed; top: 12px; left: 16px; color: #555; text-decoration: none; font-size: 13px; font-family: system-ui; }
+#back:hover { color: #aaa; }
+#phone {
+    display: flex; flex-direction: column; align-items: center;
+    background: linear-gradient(165deg, #2f2f2f 0%, #1b1b1b 100%);
+    border-radius: 22px 22px 18px 18px;
+    padding: 12px 14px 18px;
+    box-shadow: 0 0 0 1px #111, 0 6px 40px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.06);
+    gap: 10px;
+}
+#brand { color: #777; font-size: 9px; letter-spacing: .3em; text-transform: uppercase; font-family: system-ui; align-self: flex-start; padding-left: 2px; }
+#bezel {
+    background: #080808; border-radius: 5px; padding: 5px;
+    box-shadow: inset 0 2px 8px rgba(0,0,0,.9), 0 0 0 1px #2a2a2a;
+}
+#lcd {
+    display: block; image-rendering: pixelated; image-rendering: crisp-edges;
+    border-radius: 2px;
+    box-shadow: 0 0 20px rgba(200,180,0,.2), inset 0 0 6px rgba(0,0,0,.4);
+}
+#dpad { display: flex; gap: 8px; align-items: center; }
+.btn {
+    width: 52px; height: 38px;
+    background: linear-gradient(180deg, #3c3c3c, #222);
+    border: 1px solid #111; border-radius: 8px;
+    color: #bbb; font-size: 17px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; box-shadow: 0 3px 0 #111;
+    transition: transform .05s, box-shadow .05s;
+    -webkit-tap-highlight-color: transparent;
+}
+.btn:active, .btn.dn { transform: translateY(2px); box-shadow: 0 1px 0 #111; }
+#btnOK {
+    width: 42px; height: 42px; border-radius: 50%;
+    background: linear-gradient(180deg, #454545, #282828);
+    border: 1px solid #111; color: #bbb; font-size: 11px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; box-shadow: 0 3px 0 #111;
+    -webkit-tap-highlight-color: transparent; font-family: system-ui;
+}
+#btnOK:active { transform: translateY(1px); box-shadow: 0 1px 0 #111; }
+</style>
+</head>
+<body>
+<a href="/" id="back">← меню</a>
+<div id="phone">
+  <div id="brand">Siemens</div>
+  <div id="bezel"><canvas id="lcd"></canvas></div>
+  <div id="dpad">
+    <div class="btn" id="btnL">◀</div>
+    <div id="btnOK">OK</div>
+    <div class="btn" id="btnR">▶</div>
+  </div>
+</div>
+<script>
+'use strict';
+// ── Virtual screen: 100×64 (≈ Siemens A55 101×64) ────────────────────────────
+const VW = 100, VH = 64, SCALE = 6;
+const CELL = 8, COLS = 12, ROWS = 6;
+// gridCol → pixel x of sprite left edge
+const colPx = c => c * CELL + 4;          // 4,12,20,...,92
+// gridRow → pixel y of sprite top edge (row 0 = floor level)
+const rowPy = (r, h) => VH - (r * CELL + 4) - h;  // h=sprite height
+
+const canvas = document.getElementById('lcd');
+canvas.width = VW; canvas.height = VH;
+canvas.style.width  = VW * SCALE + 'px';
+canvas.style.height = VH * SCALE + 'px';
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+const BG = '#c8b400', FG = '#1a1000';
+
+// ── Sprites (from kdkocev/stackattack, authentic pixel data) ─────────────────
+const S = {};
+S.floor = [[1,1,1,1],[1,0,1,0],[0,1,0,0],[0,0,0,1]];
+S.wall  = [[0,0,0,1],[1,1,1,1],[0,1,0,1],[1,1,1,1]];
+S.rail  = [[1,0,1,0],[1,1,1,1],[0,0,0,0],[1,1,1,1]];
+S.bg = [
+  [1,0,1,0,1,0,1,0],[1,1,0,1,1,1,0,0],[1,0,0,0,1,0,0,1],[0,1,0,1,0,1,1,0],
+  [1,0,1,0,0,0,1,0],[0,1,0,1,0,1,0,1],[0,0,0,0,1,0,1,0],[0,1,0,1,0,1,0,0],
+  [1,0,1,0,0,0,1,0],[0,1,0,1,0,1,0,1],[0,0,0,0,1,0,1,0],[0,1,0,1,0,1,0,1],
+  [0,0,0,0,0,0,1,0],[0,1,0,1,0,1,0,1],[1,0,0,0,1,0,0,0],[0,0,1,0,0,0,1,0],
+  [0,0,0,0,1,0,0,1],[0,0,0,0,0,1,0,0],[0,1,0,1,0,0,1,0],[0,0,0,0,0,1,0,0],
+  [1,0,0,1,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,1,0,1],[0,0,1,0,0,0,0,0],
+  [1,0,0,0,0,1,0,0],[0,0,0,1,0,0,0,1],[0,0,0,0,0,0,0,0],[0,1,0,0,0,1,0,0],
+  [0,0,0,0,0,0,0,0],[0,0,0,1,0,0,0,1],[0,0,0,0,0,0,0,0],[0,0,0,0,0,1,0,0]
+];
+S.boxes = [
+  [[1,1,1,1,1,1,1,1],[1,1,0,0,0,0,1,1],[1,0,1,0,0,1,0,1],[1,0,0,1,1,0,0,1],[1,0,0,1,1,0,0,1],[1,0,1,0,0,1,0,1],[1,1,0,0,0,0,1,1],[1,1,1,1,1,1,1,1]],
+  [[1,1,1,1,1,1,1,1],[1,1,0,0,0,0,1,1],[1,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,1],[1,1,0,0,0,0,1,1],[1,1,1,1,1,1,1,1]],
+  [[1,1,1,1,1,1,1,1],[1,1,0,0,0,0,1,1],[1,0,1,0,0,1,0,1],[1,0,0,1,1,0,0,1],[1,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1]],
+  [[1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1]],
+  [[1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,1],[1,1,0,0,0,0,1,1],[1,0,1,0,0,1,0,1],[1,0,1,0,0,1,0,1],[1,1,0,0,0,0,1,1],[1,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1]],
+  [[1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,1],[1,0,0,1,1,1,1,1],[1,0,0,1,0,0,1,1],[1,0,0,1,1,1,1,1],[1,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1]],
+  [[1,1,1,1,1,1,1,1],[1,0,0,0,1,0,0,1],[1,0,0,0,1,0,0,1],[1,0,0,0,1,1,1,1],[1,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1]]
+];
+// Player: 15 frames × 16 rows × 8 cols
+S.player = [
+  // 0 idle1
+  [[0,0,1,1,1,1,0,0],[0,1,0,0,0,0,1,0],[0,1,0,0,0,0,1,0],[0,1,1,1,1,1,1,0],[0,1,1,0,0,1,1,0],[0,1,1,0,0,1,1,0],[0,1,0,0,0,0,1,0],[0,1,0,0,0,0,1,0],[1,0,1,1,1,1,0,1],[1,0,1,0,0,1,0,1],[1,0,1,0,0,1,0,1],[1,1,1,0,0,1,1,1],[1,0,1,1,1,1,0,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,0],[0,1,1,1,1,1,1,0]],
+  // 1 idle2
+  [[0,0,1,1,1,1,0,0],[0,1,0,0,0,0,1,0],[0,1,0,0,0,0,1,0],[0,1,0,0,0,0,1,0],[0,1,1,1,1,1,1,0],[0,1,1,0,0,1,1,0],[0,1,0,0,0,0,1,0],[0,1,0,0,0,0,1,0],[0,1,1,1,1,1,1,0],[1,0,1,0,0,1,0,1],[1,0,1,0,0,1,0,1],[1,0,1,0,0,1,0,1],[1,1,1,1,1,1,1,1],[1,0,1,1,1,1,0,1],[0,1,1,1,1,1,1,0],[0,1,1,1,1,1,1,0]],
+  // 2 idle3
+  [[0,0,1,1,1,1,0,0],[0,1,0,0,0,0,1,0],[0,1,0,0,0,0,1,0],[0,1,1,1,1,1,1,1],[0,1,0,1,1,1,0,0],[0,1,0,1,0,1,1,1],[0,1,0,0,0,0,0,1],[0,1,0,0,0,1,1,1],[1,0,1,1,1,1,1,0],[1,0,1,0,0,1,0,1],[1,0,1,0,0,1,0,1],[1,1,1,0,0,1,0,1],[1,0,1,1,1,1,1,1],[1,1,1,1,1,1,0,1],[0,1,1,1,1,1,1,0],[0,1,1,1,1,1,1,0]],
+  // 3 idle4
+  [[0,0,1,1,1,1,0,0],[0,1,0,0,0,0,1,0],[0,1,0,0,0,0,1,0],[1,1,1,1,1,1,1,0],[0,0,1,1,1,0,1,0],[1,1,1,0,1,0,1,0],[1,0,0,0,0,0,1,0],[1,1,1,0,0,0,1,0],[0,1,1,1,1,1,0,1],[1,0,1,0,0,1,0,1],[1,0,1,0,0,1,0,1],[1,0,1,0,0,1,1,1],[1,1,1,1,1,1,0,1],[1,0,1,1,1,1,1,1],[0,1,1,1,1,1,1,0],[0,1,1,1,1,1,1,0]],
+  // 4 walkR1
+  [[0,0,1,1,1,1,0,0],[0,1,0,0,0,0,1,0],[0,1,0,0,0,0,1,0],[0,1,1,1,1,1,1,1],[0,1,0,1,1,1,0,0],[0,1,0,1,0,1,1,1],[0,1,0,0,0,0,0,1],[0,1,0,0,0,1,1,1],[0,1,1,1,1,1,0,0],[1,1,0,1,0,1,1,0],[1,0,1,0,0,1,0,1],[1,0,1,0,0,1,0,1],[1,1,1,1,1,1,1,0],[1,0,0,1,1,1,1,1],[0,1,1,1,1,1,1,1],[0,1,1,0,0,0,0,0]],
+  // 5 walkR2
+  [[0,1,1,1,1,0,0,0],[1,0,0,0,0,1,0,0],[1,0,0,0,0,1,0,0],[1,1,1,1,1,1,1,0],[1,0,1,1,1,0,0,0],[1,0,1,0,1,1,1,0],[1,0,0,0,0,0,1,0],[1,0,0,0,1,1,1,0],[0,1,1,1,0,0,0,0],[1,1,0,1,1,0,0,0],[1,0,1,0,1,0,0,0],[1,0,1,0,1,0,0,0],[1,1,1,1,1,0,0,0],[1,0,0,1,1,0,0,0],[1,1,1,1,1,1,0,0],[1,1,1,1,1,1,0,0]],
+  // 6 walkL1
+  [[0,0,1,1,1,1,0,0],[0,1,0,0,0,0,1,0],[0,1,0,0,0,0,1,0],[1,1,1,1,1,1,1,0],[0,0,1,1,1,0,1,0],[1,1,1,0,1,0,1,0],[1,0,0,0,0,0,1,0],[1,1,1,0,0,0,1,0],[0,0,1,1,1,1,1,0],[0,1,1,0,1,0,1,1],[1,0,1,0,0,1,0,1],[1,0,1,0,0,1,0,1],[0,1,1,1,1,1,1,1],[1,1,1,1,1,0,0,1],[1,1,1,1,1,1,1,0],[0,0,0,0,0,1,1,0]],
+  // 7 walkL2
+  [[0,0,0,1,1,1,1,0],[0,0,1,0,0,0,0,1],[0,0,1,0,0,0,0,1],[0,1,1,1,1,1,1,1],[0,0,0,1,1,1,0,1],[0,1,1,1,0,1,0,1],[0,1,0,0,0,0,0,1],[0,1,1,1,0,0,0,1],[0,0,0,0,1,1,1,0],[0,0,0,1,1,0,1,1],[0,0,0,1,0,1,0,1],[0,0,0,1,0,1,0,1],[0,0,0,1,1,1,1,1],[0,0,0,1,1,0,0,1],[0,0,1,1,1,1,1,1],[0,0,1,1,1,1,1,1]],
+  // 8 pushL1
+  [[0,1,1,1,1,0,0,0],[1,0,0,0,0,1,0,0],[1,0,0,0,0,1,0,0],[1,1,1,1,1,1,0,0],[0,1,1,1,0,1,0,0],[1,1,0,1,0,1,0,0],[1,0,0,0,0,1,0,0],[1,1,1,1,1,1,0,0],[1,0,1,0,0,1,0,0],[1,0,1,0,0,1,0,0],[1,1,1,1,1,1,1,0],[0,0,1,1,1,1,1,0],[0,0,1,1,1,1,1,0],[0,0,0,1,1,1,1,1],[0,0,0,1,1,1,1,1],[0,0,0,1,1,1,1,1]],
+  // 9 pushL2
+  [[0,1,1,1,1,0,0,0],[1,0,0,0,0,1,0,0],[1,0,0,0,0,1,0,0],[1,1,1,1,1,1,0,0],[0,1,1,1,0,1,0,0],[1,1,0,1,0,1,0,0],[1,0,0,0,0,1,0,0],[1,1,1,1,1,1,0,0],[1,1,1,1,1,1,0,0],[1,1,1,0,0,1,0,0],[1,0,1,1,1,1,0,0],[1,1,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,1,0],[0,0,1,1,1,1,1,0]],
+  // 10 pushL3
+  [[0,1,1,1,1,0,0,0],[1,0,0,0,0,1,0,0],[1,0,0,0,0,1,0,0],[1,1,1,1,1,1,0,0],[0,1,1,1,0,1,0,0],[1,1,0,1,0,1,0,0],[1,0,0,0,0,1,0,0],[1,1,1,0,0,1,0,0],[1,1,1,1,1,1,0,0],[1,0,1,0,0,1,0,0],[1,0,1,0,0,1,1,0],[1,1,1,1,1,1,1,0],[0,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,1],[1,1,1,0,0,1,1,1],[1,1,1,0,0,1,1,1]],
+  // 11 pushR1
+  [[0,0,0,1,1,1,1,0],[0,0,1,0,0,0,0,1],[0,0,1,0,0,0,0,1],[0,0,1,1,1,1,1,1],[0,0,1,0,1,1,1,0],[0,0,1,0,1,0,1,1],[0,0,1,0,0,0,0,1],[0,0,1,1,1,1,1,1],[0,0,1,0,0,1,0,1],[0,0,1,0,0,1,0,1],[0,1,1,1,1,1,1,1],[0,1,1,1,1,1,0,0],[0,1,1,1,1,1,0,0],[1,1,1,1,1,0,0,0],[1,1,1,1,1,0,0,0],[1,1,1,1,1,0,0,0]],
+  // 12 pushR2
+  [[0,0,0,1,1,1,1,0],[0,0,1,0,0,0,0,1],[0,0,1,0,0,0,0,1],[0,0,1,1,1,1,1,1],[0,0,1,0,1,1,1,0],[0,0,1,0,1,0,1,1],[0,0,1,0,0,0,0,1],[0,0,1,1,1,1,1,1],[0,0,1,1,1,1,1,1],[0,0,1,0,0,1,1,1],[0,0,1,1,1,1,0,1],[0,0,1,1,1,1,1,1],[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,1,1,1,1,1,0,0],[0,1,1,1,1,1,0,0]],
+  // 13 pushR3
+  [[0,0,0,1,1,1,1,0],[0,0,1,0,0,0,0,1],[0,0,1,0,0,0,0,1],[0,0,1,1,1,1,1,1],[0,0,1,0,1,1,1,0],[0,0,1,0,1,0,1,1],[0,0,1,0,0,0,0,1],[0,0,1,0,0,1,1,1],[0,0,1,1,1,1,1,1],[0,0,1,0,0,1,0,1],[0,1,1,0,0,1,0,1],[0,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,0],[1,1,1,0,0,1,1,1],[1,1,1,0,0,1,1,1]],
+  // 14 jump
+  [[0,0,1,1,1,1,0,0],[0,1,0,0,0,0,1,0],[0,1,0,0,0,0,1,0],[0,1,1,1,1,1,1,1],[0,1,0,1,1,1,0,0],[0,1,0,1,0,1,1,1],[0,1,0,0,0,0,0,1],[0,1,0,0,0,1,1,1],[1,1,1,1,1,1,1,0],[1,0,0,0,1,1,0,1],[1,1,1,1,1,1,0,1],[1,0,0,1,1,1,1,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,0,1,1,1,1],[0,1,1,0,0,1,1,0]]
+];
+// Crane trolley sprite (8×8, hangs from railing)
+S.crane = [
+  [0,1,1,0,0,1,1,0],
+  [1,1,1,1,1,1,1,1],
+  [0,1,1,1,1,1,1,0],
+  [0,0,1,1,1,1,0,0],
+  [0,0,0,1,1,0,0,0],
+  [0,0,0,1,0,0,0,0],
+  [0,0,0,1,1,0,0,0],
+  [0,0,0,0,0,0,0,0]
+];
+
+// ── Drawing helpers ───────────────────────────────────────────────────────────
+function spr(px, py, sprite) {
+  const h = sprite.length, w = sprite[0].length;
+  for (let r = 0; r < h; r++)
+    for (let c = 0; c < w; c++) {
+      ctx.fillStyle = sprite[r][c] ? FG : BG;
+      ctx.fillRect(px + c, py + r, 1, 1);
+    }
+}
+function sprClip(px, py, sprite, clipTop, clipBot) {
+  // draw only rows within [clipTop, clipBot) in screen coords
+  const h = sprite.length, w = sprite[0].length;
+  for (let r = 0; r < h; r++) {
+    const sy = py + r;
+    if (sy < clipTop || sy >= clipBot) continue;
+    for (let c = 0; c < w; c++) {
+      ctx.fillStyle = sprite[r][c] ? FG : BG;
+      ctx.fillRect(px + c, sy, 1, 1);
+    }
+  }
+}
+
+// Pixel font 3×5
+const F = {
+  '0':['111','101','101','101','111'],'1':['010','110','010','010','111'],
+  '2':['111','001','111','100','111'],'3':['111','001','111','001','111'],
+  '4':['101','101','111','001','001'],'5':['111','100','111','001','111'],
+  '6':['111','100','111','101','111'],'7':['111','001','001','010','010'],
+  '8':['111','101','111','101','111'],'9':['111','101','111','001','111'],
+  'S':['111','100','111','001','111'],'C':['111','100','100','100','111'],
+  'O':['111','101','101','101','111'],'R':['110','101','110','101','101'],
+  'E':['111','100','110','100','111'],'A':['010','101','111','101','101'],
+  'T':['111','010','010','010','010'],'K':['101','110','100','110','101'],
+  'H':['101','101','111','101','101'],'I':['111','010','010','010','111'],
+  ':':['0','1','0','1','0'],' ':['000','000','000','000','000'],
+  'G':['011','100','101','101','011'],'M':['101','111','101','101','101'],
+  'P':['110','101','110','100','100'],'V':['101','101','101','010','010'],
+  'L':['100','100','100','100','111'],'N':['101','111','111','101','101'],
+  'W':['101','101','101','111','010'],
+};
+function txt(s, x, y, color) {
+  ctx.fillStyle = color || FG;
+  let cx = x;
+  for (const ch of s.toUpperCase()) {
+    const g = F[ch] || F[' '];
+    for (let r = 0; r < 5; r++)
+      for (let c = 0; c < (g[r]||'').length; c++)
+        if ((g[r]||'')[c]==='1') ctx.fillRect(cx+c, y+r, 1, 1);
+    cx += (g[0]||'').length + 1;
+  }
+}
+function txtW(s) {
+  let w = 0;
+  for (const ch of s.toUpperCase()) { const g=F[ch]||F[' ']; w+=(g[0]||'').length+1; }
+  return w-1;
+}
+function txt2x(s, x, y) {
+  // draw text at 2× scale
+  ctx.fillStyle = FG;
+  let cx = x;
+  for (const ch of s.toUpperCase()) {
+    const g = F[ch] || F[' '];
+    for (let r = 0; r < 5; r++)
+      for (let c = 0; c < (g[r]||'').length; c++)
+        if ((g[r]||'')[c]==='1') ctx.fillRect(cx+c*2, y+r*2, 2, 2);
+    cx += ((g[0]||'').length + 1)*2;
+  }
+}
+
+// ── Static scene ─────────────────────────────────────────────────────────────
+function drawScene() {
+  ctx.fillStyle = BG;
+  ctx.fillRect(0, 0, VW, VH);
+  for (let x = 4; x < VW; x += 8)  spr(x, 4,  S.bg);
+  for (let y = 0; y < 60; y += 4)  spr(0, y,  S.wall);
+  for (let x = 4; x < VW; x += 4)  spr(x, 60, S.floor);
+  for (let x = 0; x < VW; x += 4)  spr(x, 0,  S.rail);
+}
+
+// ── Game state ────────────────────────────────────────────────────────────────
+let gstate = 'title'; // 'title'|'playing'|'dead'
+let grid;   // grid[col][row] = texIdx(1-6) | 0(empty)
+let score, hiScore = +localStorage.getItem('sa_hi')||0;
+let craneList, fallingList;
+let nextCraneIn;   // ms
+let cranesPerWave; // how many cranes to spawn between rows
+let cleared;       // rows cleared total
+
+// player
+let P;
+
+function newGrid() {
+  return Array.from({length:COLS}, ()=>new Array(ROWS).fill(0));
+}
+
+function stackTop(col) {
+  for (let r = ROWS-1; r >= 0; r--) if (grid[col][r]) return r+1;
+  return 0;
+}
+
+function initGame() {
+  grid = newGrid();
+  score = 0; cleared = 0;
+  craneList = []; fallingList = [];
+  cranesPerWave = 1;
+  nextCraneIn = 1500;
+  P = {
+    col: 6,       // integer column position
+    row: 0,       // integer row position (0=floor)
+    fx: 6.0,      // float position for smooth draw
+    fy: 0.0,
+    tx: 6,        // target column
+    ty: 0,        // target row
+    moving: false,
+    jumping: false,
+    jumpT: 0,     // ms into jump
+    state: 'idle',// idle|walkL|walkR|pushL|pushR|jump
+    animF: 0, animT: 0,
+    dead: false,
+    pushBoxCol: -1, // column of box being pushed
+    pushBoxFx: 0.0, // float x of pushed box
+  };
+}
+
+// ── Crane logic ───────────────────────────────────────────────────────────────
+// Crane: { x (virtual px), vx, targetX, col, texIdx, dropped, offscreen }
+const CRANE_SPD = 20; // virtual px/s
+
+function spawnCrane() {
+  const col = Math.floor(Math.random() * COLS);
+  const texIdx = Math.ceil(Math.random() * 6);
+  const fromLeft = Math.random() < 0.5;
+  const tx = colPx(col) + 4; // center x of target column
+  craneList.push({
+    x: fromLeft ? -8 : VW + 8,
+    vx: fromLeft ? CRANE_SPD : -CRANE_SPD,
+    targetX: tx,
+    col,
+    texIdx,
+    dropped: false,
+    offscreen: false
+  });
+}
+
+// ── Falling box logic ─────────────────────────────────────────────────────────
+// FBox: { col, texIdx, fy (float row, decreases), speed (rows/s) }
+const BOX_FALL_SPD = 2.5; // rows per second
+
+// ── Player animation frames ───────────────────────────────────────────────────
+const ANIM = {
+  idle:  {frames:[0,1,2,3], interval:500},
+  walkR: {frames:[4,5],     interval:200},
+  walkL: {frames:[6,7],     interval:200},
+  pushL: {frames:[8,9,10],  interval:200},
+  pushR: {frames:[11,12,13],interval:200},
+  jump:  {frames:[14],      interval:400},
+};
+
+function playerFrame() {
+  const a = ANIM[P.state] || ANIM.idle;
+  return a.frames[P.animF % a.frames.length];
+}
+
+// ── Row clear ─────────────────────────────────────────────────────────────────
+function checkRows() {
+  for (let r = 0; r < ROWS; r++) {
+    let full = true;
+    for (let c = 0; c < COLS; c++) if (!grid[c][r]) { full=false; break; }
+    if (!full) continue;
+    // Remove row r, drop everything above
+    for (let c = 0; c < COLS; c++) {
+      for (let rr = r; rr < ROWS-1; rr++) grid[c][rr] = grid[c][rr+1];
+      grid[c][ROWS-1] = 0;
+    }
+    // Player drops if above cleared row
+    if (P.row > r) { P.row--; P.fy = P.row; P.ty = P.row; }
+    score += 10;
+    cleared++;
+    // Increase difficulty
+    if (cleared % 3 === 0 && cranesPerWave < 4) cranesPerWave++;
+    nextCraneIn = 800;
+    return true; // check again next frame
+  }
+  return false;
+}
+
+// ── Collision: box lands on player ───────────────────────────────────────────
+function checkDeath(fb) {
+  // fb.fy in rows — player occupies P.row and P.row+1 (16px tall = 2 rows)
+  if (fb.col !== P.col) return false;
+  const fbBottom = fb.fy; // top of box, row units
+  const playerTop = P.row + 1; // player top (2 cells tall)
+  // Box falls downward (fy decreasing). Collision when box top <= player top
+  if (fbBottom <= playerTop + 0.5 && fbBottom >= P.row - 0.5) return true;
+  return false;
+}
+
+// ── Update ────────────────────────────────────────────────────────────────────
+function update(dt) {
+  // Spawn cranes
+  nextCraneIn -= dt;
+  if (nextCraneIn <= 0 && craneList.length < cranesPerWave) {
+    spawnCrane();
+    nextCraneIn = 2000 + Math.random() * 1000;
+  }
+
+  // Update cranes
+  for (const cr of craneList) {
+    if (cr.offscreen) continue;
+    cr.x += cr.vx * dt / 1000;
+    // Drop box when over target
+    if (!cr.dropped) {
+      const atTarget = cr.vx > 0 ? cr.x >= cr.targetX : cr.x <= cr.targetX;
+      if (atTarget) {
+        cr.dropped = true;
+        // Start falling box from top
+        fallingList.push({ col: cr.col, texIdx: cr.texIdx, fy: ROWS + 0.5 });
+      }
+    }
+    // Mark offscreen
+    if (cr.x < -12 || cr.x > VW + 12) cr.offscreen = true;
+  }
+  craneList = craneList.filter(c => !c.offscreen);
+
+  // Update falling boxes
+  for (const fb of fallingList) {
+    fb.fy -= BOX_FALL_SPD * dt / 1000;
+    const target = stackTop(fb.col);
+    if (fb.fy <= target) {
+      fb.fy = target;
+      fb.landed = true;
+    }
+    // Check death before landing
+    if (!fb.landed && checkDeath(fb)) {
+      P.dead = true; P.state = 'idle';
+    }
+  }
+  // Land boxes
+  for (const fb of fallingList) {
+    if (!fb.landed) continue;
+    const r = Math.round(fb.fy);
+    if (r < ROWS) {
+      grid[fb.col][r] = fb.texIdx;
+      // Check if box landed on player (at rest)
+      if (fb.col === P.col && r === P.row) P.dead = true;
+    }
+  }
+  fallingList = fallingList.filter(f => !f.landed);
+
+  checkRows();
+
+  // Update player animation
+  const anim = ANIM[P.state] || ANIM.idle;
+  P.animT += dt;
+  if (P.animT >= anim.interval) {
+    P.animT -= anim.interval;
+    P.animF++;
+    if (P.animF >= anim.frames.length) P.animF = 0;
+  }
+
+  // Smooth player position towards target
+  const spd = 8; // cells/s
+  const dx = P.tx - P.fx, dy = P.ty - P.fy;
+  const step = spd * dt / 1000;
+  if (Math.abs(dx) > step) P.fx += Math.sign(dx)*step;
+  else { P.fx = P.tx; }
+  if (Math.abs(dy) > step) P.fy += Math.sign(dy)*step;
+  else { P.fy = P.ty; }
+
+  // Arrive at target
+  if (P.fx === P.tx && P.fy === P.ty && P.moving) {
+    P.moving = false;
+    P.col = P.tx; P.row = P.ty;
+    // Check if box was being pushed: snap it
+    if (P.pushBoxCol >= 0) {
+      const dir = P.state === 'pushL' ? -1 : 1;
+      const destCol = P.col + dir;
+      if (destCol >= 0 && destCol < COLS) {
+        // box landed at destCol (already set in grid during push)
+      }
+      P.pushBoxCol = -1;
+    }
+    // Gravity: fall if no box below
+    applyGravity();
+    if (!P.jumping) P.state = 'idle';
+  }
+
+  // Jump arc
+  if (P.jumping) {
+    P.jumpT += dt;
+    const JUMP_DUR = 400; // ms total (up 200ms, down 200ms)
+    if (P.jumpT >= JUMP_DUR) {
+      P.jumping = false;
+      P.jumpT = 0;
+      applyGravity();
+    }
+  }
+}
+
+function applyGravity() {
+  // Player falls if no support below
+  while (P.row > 0 && !grid[P.col][P.row - 1]) {
+    P.row--;
+    P.ty = P.row;
+  }
+  P.fy = P.fy; // smooth will follow
+}
+
+// ── Input ─────────────────────────────────────────────────────────────────────
+const keys = {};
+document.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (['Space','Enter'].includes(e.code)) { handleOK(); e.preventDefault(); }
+  if (e.code==='ArrowLeft'  || e.code==='KeyA') { handleLeft();  e.preventDefault(); }
+  if (e.code==='ArrowRight' || e.code==='KeyD') { handleRight(); e.preventDefault(); }
+  if (e.code==='ArrowUp'    || e.code==='KeyW') { handleJump();  e.preventDefault(); }
+});
+document.addEventListener('keyup', e => { keys[e.code] = false; });
+
+document.getElementById('btnL').addEventListener('pointerdown', e=>{ e.preventDefault(); handleLeft(); document.getElementById('btnL').classList.add('dn'); });
+document.getElementById('btnR').addEventListener('pointerdown', e=>{ e.preventDefault(); handleRight(); document.getElementById('btnR').classList.add('dn'); });
+document.getElementById('btnOK').addEventListener('pointerdown', e=>{ e.preventDefault(); handleOK(); });
+window.addEventListener('pointerup', ()=>{
+  document.getElementById('btnL').classList.remove('dn');
+  document.getElementById('btnR').classList.remove('dn');
+});
+
+// Touch swipe on canvas
+let swipeX = 0;
+canvas.addEventListener('touchstart', e=>{ swipeX=e.touches[0].clientX; e.preventDefault(); },{passive:false});
+canvas.addEventListener('touchend', e=>{
+  const dx = e.changedTouches[0].clientX - swipeX;
+  if (Math.abs(dx) < 15) { handleOK(); return; }
+  if (dx < 0) handleLeft(); else handleRight();
+},{passive:false});
+
+function handleOK() {
+  if (gstate === 'title' || gstate === 'dead') { initGame(); gstate = 'playing'; }
+}
+
+function handleLeft() {
+  if (gstate !== 'playing' || P.dead || P.moving || P.jumping) return;
+  if (P.col <= 0) return;
+  // Check for box to push
+  if (grid[P.col-1][P.row]) {
+    // Can push if space behind box
+    if (P.col-2 >= 0 && !grid[P.col-2][P.row]) {
+      // Push box left
+      const bTex = grid[P.col-1][P.row];
+      grid[P.col-1][P.row] = 0;
+      grid[P.col-2][P.row] = bTex;
+      P.tx = P.col - 1;
+      P.ty = P.row;
+      P.moving = true;
+      P.state = 'pushL';
+      P.animF = 0;
+    }
+    return; // blocked
+  }
+  // Walk left
+  const newCol = P.col - 1;
+  // Can climb 1 box
+  const newRow = stackTop(newCol);
+  if (newRow > P.row + 1) return; // too high to climb
+  P.tx = newCol;
+  P.ty = newRow;
+  P.moving = true;
+  P.state = 'walkL';
+  P.animF = 0;
+}
+
+function handleRight() {
+  if (gstate !== 'playing' || P.dead || P.moving || P.jumping) return;
+  if (P.col >= COLS-1) return;
+  if (grid[P.col+1][P.row]) {
+    if (P.col+2 < COLS && !grid[P.col+2][P.row]) {
+      const bTex = grid[P.col+1][P.row];
+      grid[P.col+1][P.row] = 0;
+      grid[P.col+2][P.row] = bTex;
+      P.tx = P.col + 1;
+      P.ty = P.row;
+      P.moving = true;
+      P.state = 'pushR';
+      P.animF = 0;
+    }
+    return;
+  }
+  const newCol = P.col + 1;
+  const newRow = stackTop(newCol);
+  if (newRow > P.row + 1) return;
+  P.tx = newCol;
+  P.ty = newRow;
+  P.moving = true;
+  P.state = 'walkR';
+  P.animF = 0;
+}
+
+function handleJump() {
+  if (gstate !== 'playing' || P.dead || P.jumping || P.moving) return;
+  P.jumping = true;
+  P.jumpT = 0;
+  P.ty = P.row + 1;
+  P.tx = P.col;
+  P.moving = true;
+  P.state = 'jump';
+  P.animF = 0;
+}
+
+// ── Draw ──────────────────────────────────────────────────────────────────────
+function draw() {
+  drawScene();
+
+  // Draw stacked boxes
+  for (let c = 0; c < COLS; c++)
+    for (let r = 0; r < ROWS; r++)
+      if (grid[c][r]) {
+        const px = colPx(c), py = rowPy(r, CELL);
+        sprClip(px, py, S.boxes[grid[c][r]-1], 4, 60);
+      }
+
+  // Draw falling boxes
+  for (const fb of fallingList) {
+    const px = colPx(fb.col);
+    const py = rowPy(fb.fy, CELL);
+    sprClip(px, Math.round(py), S.boxes[fb.texIdx-1], 4, 60);
+  }
+
+  // Draw cranes
+  for (const cr of craneList) {
+    const px = Math.round(cr.x) - 4; // center → left edge
+    spr(px, 0, S.crane);
+    // Draw the box hanging below crane (if not yet dropped)
+    if (!cr.dropped) {
+      sprClip(px, 8, S.boxes[cr.texIdx-1], 0, 16);
+    }
+  }
+
+  // Draw player
+  const px = colPx(Math.round(P.fx));
+  const py = rowPy(P.fy, 16);
+  sprClip(px, Math.round(py), S.player[playerFrame()], 4, 60);
+
+  // Score bar (over railing, semi-transparent via opaque redraw)
+  ctx.fillStyle = BG;
+  ctx.fillRect(4, 1, VW-4, 3);
+  const sc = 'S:'+score;
+  const hi = 'H:'+hiScore;
+  txt(sc, 5, 1);
+  txt(hi, VW - txtW(hi) - 2, 1);
+}
+
+function drawTitle() {
+  ctx.fillStyle = BG;
+  ctx.fillRect(0, 0, VW, VH);
+  for (let x = 4; x < VW; x += 8) spr(x, 4, S.bg);
+  for (let x = 0; x < VW; x += 4) spr(x, 0, S.rail);
+  for (let x = 4; x < VW; x += 4) spr(x, 60, S.floor);
+  for (let y = 0; y < 60; y += 4) spr(0, y, S.wall);
+
+  // Title
+  txt2x('STACK', Math.floor((VW - 5*8)/2), 14);
+  txt2x('ATTACK', Math.floor((VW - 6*8)/2), 28);
+  txt('PRESS OK', Math.floor((VW - txtW('PRESS OK'))/2), 48);
+  const hs = 'RECORD:'+hiScore;
+  txt(hs, Math.floor((VW - txtW(hs))/2), 56);
+}
+
+function drawDead() {
+  draw();
+  // Dim overlay
+  ctx.fillStyle = BG;
+  ctx.globalAlpha = 0.5;
+  ctx.fillRect(4, 20, VW-4, 26);
+  ctx.globalAlpha = 1;
+  txt2x('GAME', Math.floor((VW-4*8)/2), 22);
+  txt2x('OVER', Math.floor((VW-4*8)/2), 34);
+}
+
+// ── Main loop ─────────────────────────────────────────────────────────────────
+let lastT = 0;
+let deadTimer = 0;
+function loop(ts) {
+  const dt = Math.min(ts - lastT, 50);
+  lastT = ts;
+
+  if (gstate === 'title') {
+    drawTitle();
+  } else if (gstate === 'playing') {
+    if (P.dead) {
+      gstate = 'dead';
+      deadTimer = 0;
+      if (score > hiScore) { hiScore = score; localStorage.setItem('sa_hi', hiScore); }
+    } else {
+      update(dt);
+      draw();
+    }
+  } else if (gstate === 'dead') {
+    deadTimer += dt;
+    drawDead();
+    if (deadTimer > 60 && Math.floor(deadTimer/400)%2===0) {
+      const m = 'OK TO RETRY';
+      txt(m, Math.floor((VW-txtW(m))/2), 54);
+    }
+  }
+
+  requestAnimationFrame(loop);
+}
+
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

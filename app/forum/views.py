@@ -17,6 +17,7 @@ _GALLERY_DIR = "/mnt/disk/photo_share/ОПУБЛИКОВАНО/"
 _gallery_cache = None  # заполняется воркером
 
 def _build_dirdict_sync():
+    """Синхронная сборка дерева каталогов (запускается в executor)."""
     dirdict = {}
     l1 = l2 = l3 = ''
     for root, dirs, files in os.walk(_GALLERY_DIR, followlinks=False):
@@ -45,6 +46,7 @@ async def _refresh_gallery_cache():
     _gallery_cache = await loop.run_in_executor(None, _build_dirdict_sync)
 
 async def gallery_cache_worker():
+    """Фоновый воркер: строит кеш сразу при старте, затем обновляет каждые 5 минут."""
     while True:
         try:
             await _refresh_gallery_cache()
@@ -66,6 +68,7 @@ _TRASH_DIR    = "/mnt/disk/photo_share/trash/"
 _TRASH_REAL   = os.path.realpath(_TRASH_DIR)
 
 def _safe_gallery_path(user_path: str) -> str | None:
+    """Return realpath if it stays within gallery dir, else None."""
     if not user_path:
         return None
     real = os.path.realpath(os.path.join(_GALLERY_DIR, user_path.strip('/')))
@@ -94,6 +97,7 @@ async def api_gallery_photos(request):
     })
 
 async def serve_video(request):
+    """Отдаёт MP4/MOV с поддержкой Range (перемотка работает сразу)."""
     pathf = request.rel_url.query.get('urla', '').strip('/')
     if not pathf or '..' in pathf:
         raise web.HTTPForbidden()
@@ -102,6 +106,7 @@ async def serve_video(request):
         raise web.HTTPForbidden()
     if not os.path.isfile(real) or not _VIDEO_RE.match(real):
         raise web.HTTPNotFound()
+    # FileResponse handles Range, ETag, Content-Length автоматически
     return web.FileResponse(real)
 
 # ── Share links ───────────────────────────────────────────────────────────────
@@ -110,6 +115,7 @@ def _share_token(urla: str, secret: str) -> str:
     return mac.hexdigest()[:32]
 
 def _verify_share(request) -> tuple:
+    """Проверяет токен, возвращает (urla, is_video) или бросает HTTP-исключение."""
     p = request.query.get('p', '')
     t = request.query.get('t', '')
     if not p or not t:
@@ -127,6 +133,7 @@ def _verify_share(request) -> tuple:
     return urla, bool(_VIDEO_RE.match(real))
 
 async def api_share_create(request):
+    """Authenticated: generates a public share URL for a photo/video."""
     urla = request.query.get('urla', '').strip('/')
     if not urla:
         raise web.HTTPBadRequest()
@@ -139,6 +146,7 @@ async def api_share_create(request):
     return web.json_response({'url': f'/share?p={p}&t={token}'})
 
 async def share_view(request):
+    """Public: minimal viewer page for a shared photo/video."""
     urla, is_video = _verify_share(request)
     p, t = request.query.get('p'), request.query.get('t')
     fname = urla.split('/')[-1]
@@ -176,6 +184,7 @@ a.btn:hover{{background:rgba(255,255,255,0.25)}}
     return web.Response(text=html, content_type='text/html')
 
 async def share_media(request):
+    """Public: serves the actual file for a share link (with Range support for video)."""
     urla, is_video = _verify_share(request)
     dl = request.query.get('dl') == '1'
     fname = urla.split('/')[-1]
@@ -187,6 +196,7 @@ async def share_media(request):
             resp.headers['Content-Disposition'] = f'attachment; filename="{fname}"'
         return resp
 
+    # Image: serve big webp cache if available, else original JPEG
     rel_dir = '/'.join(urla.split('/')[:-1])
     bigimg = os.path.join(_CACHE_DIR, 'big', rel_dir, fname + '.webp')
     if os.path.exists(bigimg):
@@ -205,6 +215,7 @@ async def share_media(request):
 
 # ── Background preview generator ─────────────────────────────────────────────
 def _gen_preview_sync(orig_path, small_path, big_path):
+    """Генерация webp-превью. Блокирующая, запускается в executor."""
     with open(orig_path, 'rb') as f:
         data = f.read()
     ims = Image.open(BytesIO(data))
@@ -229,6 +240,7 @@ def _gen_preview_sync(orig_path, small_path, big_path):
     im.save(big_path, 'webp', quality=97)
 
 async def _scan_and_generate_previews():
+    """Обходит дерево, генерирует отсутствующие превью с задержкой 2 с между фото."""
     loop = asyncio.get_event_loop()
     count = 0
     for root, dirs, files in os.walk(_GALLERY_DIR, followlinks=False):
@@ -248,11 +260,12 @@ async def _scan_and_generate_previews():
                 print(f'Preview worker: {rel}')
             except Exception as e:
                 print(f'Preview worker error ({rel}): {e}')
-            await asyncio.sleep(2)
+            await asyncio.sleep(2)   # не более ~0.5 фото/сек
     return count
 
 async def preview_cache_worker():
-    await asyncio.sleep(20)
+    """Генерирует недостающие превью при старте, затем проверяет каждый час."""
+    await asyncio.sleep(20)   # дать gallery_cache_worker запуститься первым
     while True:
         try:
             count = await _scan_and_generate_previews()
@@ -264,6 +277,8 @@ async def preview_cache_worker():
             print(f'Preview worker error: {e}')
         await asyncio.sleep(3600)
 
+## whatever code you want here
+# создаем функцию, которая будет отдавать html-файл
 @aiohttp_jinja2.template("index.html")
 async def index(request):
     params = request.rel_url.query
@@ -303,15 +318,29 @@ async def preview(request):
 async def gallery(request):
     global _gallery_cache
     if _gallery_cache is None:
+        # Кеш ещё не готов (воркер не успел) — строим синхронно один раз
         await _refresh_gallery_cache()
     return {'title': 'menu', 'dirlist': _gallery_cache}
 
 @aiohttp_jinja2.template("menu.html")
 async def menu(request):
-    global _gallery_cache
-    if _gallery_cache is None:
-        await _refresh_gallery_cache()
-    return {'title': 'Главная - Портфолио проектов', 'dirlist': _gallery_cache}
+    return {'title':'Главная - Портфолио проектов'}
+
+@aiohttp_jinja2.template("game.html")
+async def game(request):
+    return {}
+
+@aiohttp_jinja2.template("game_webgl.html")
+async def game_webgl(request):
+    return {}
+
+@aiohttp_jinja2.template("game_rs.html")
+async def game_rs(request):
+    return {}
+
+@aiohttp_jinja2.template("game_bench.html")
+async def game_bench(request):
+    return {}
 
 @aiohttp_jinja2.template("arena.html")
 async def arena(request):
@@ -319,10 +348,6 @@ async def arena(request):
 
 @aiohttp_jinja2.template("tetris.html")
 async def tetris(request):
-    return {}
-
-@aiohttp_jinja2.template("stackattack.html")
-async def stackattack(request):
     return {}
 
 @aiohttp_jinja2.template("minesweeper.html")
@@ -341,23 +366,8 @@ async def sampler(request):
 async def contra(request):
     return {}
 
-@aiohttp_jinja2.template("checkers.html")
-async def checkers(request):
-    return {}
-
-@aiohttp_jinja2.template("chess.html")
-async def chess(request):
-    return {}
-
-@aiohttp_jinja2.template("solitaire.html")
-async def solitaire(request):
-    return {}
-
-@aiohttp_jinja2.template("reversi.html")
-async def reversi(request):
-    return {}
-
 async def get_list(request):
+    dir = "/mnt/disk/photo_share/ОПУБЛИКОВАНО/"
     cache = '/mnt/disk/photo_share/cache/'
     trash = _TRASH_DIR
     params = request.rel_url.query
@@ -368,6 +378,7 @@ async def get_list(request):
     else:
         raise web.HTTPBadRequest()
 
+    # ── Path traversal protection ─────────────────────────────────────────────
     real_orig = _safe_gallery_path(pathf)
     if real_orig is None:
         raise web.HTTPForbidden()
@@ -384,6 +395,7 @@ async def get_list(request):
     origimg = real_orig
     trashimg = trash + pathf.strip('/')
 
+    # Validate cache and trash paths stay within their roots
     if not os.path.realpath(bigimg).startswith(_CACHE_REAL):
         raise web.HTTPForbidden()
     if not os.path.realpath(trashimg).startswith(_TRASH_REAL):
@@ -393,6 +405,7 @@ async def get_list(request):
         Path(trashpath).mkdir(parents=True, exist_ok=True)
 
     if params.get('urldel'):
+        # CSRF guard: deletion must come from same origin
         origin  = request.headers.get('Origin', '')
         referer = request.headers.get('Referer', '')
         host    = request.headers.get('Host', '')
@@ -410,27 +423,28 @@ async def get_list(request):
             os.remove(bigimg)
             os.remove(smallimg)
         return web.Response(body='200')
-
     if params.get('urla'):
         if not os.path.isfile(bigimg):
             if os.path.isfile(trashimg):
                 os.rename(trashimg, origimg)
         if os.path.isfile(smallimg):
-            if prev == 'yes':
+            if prev =='yes':
                 imgs = smallimg
                 fmt = 'webp'
-            elif prev == 'orig':
+            elif prev =='orig':
                 imgs = origimg
                 fmt = 'jpeg'
             else:
                 imgs = bigimg
                 fmt = 'webp'
 
+
             file = await open_image(imgs)
             ims = Image.open(BytesIO(file))
             im = ImageOps.exif_transpose(ims)
             stream = BytesIO()
-            im.save(stream, fmt)
+            im.save(stream,fmt)
+
 
         else:
             imgs = real_orig
@@ -454,15 +468,18 @@ async def get_list(request):
                 wpercent = (basewidth / float(im.size[1]))
                 hsize = int((float(im.size[1]) * float(wpercent)))
 
+
             imprev = im.copy()
+
             imprev.thumbnail((prevwidth, prevhsize), Image.LANCZOS)
             imprev.save(cachepath + '/' + filename + '.webp', 'webp', quality=95)
-            im.thumbnail((basewidth, hsize), Image.LANCZOS)
+
+            im.thumbnail((basewidth,hsize), Image.LANCZOS)
             im.save(cachebigpath + '/' + filename + '.webp', 'webp', quality=97)
 
             stream = BytesIO()
-            if prev == 'yes':
-                imprev.save(stream, 'webp')
+            if prev =='yes':
+                imprev.save(stream,'webp')
             else:
                 im.save(stream, "webp")
 
@@ -472,7 +489,6 @@ async def open_image(path) -> None:
     async with aiofiles.open(path, "rb") as file:
         contents = await file.read()
         return contents
-
 async def gpng(request) -> None:
     params = request.rel_url.query
     if params.get('png'):

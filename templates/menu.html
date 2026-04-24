@@ -1,553 +1,560 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{title}}</title>
-<style id="INLINE_PEN_STYLESHEET_ID">
-    .layout {
-  z-index: 1;
-}
-.layout .header {
-  box-shadow: 1px 1px 4px #9aa0b9;
-  display: flex;
-  align-items: center;
-  padding: 20px;
-}
-.layout .content {
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-}
-.layout .footer {
-  text-align: center;
-  margin-top: auto;
-  margin-bottom: 20px;
-  padding: 20px;
-}
-.layout.rtl .header {
-  box-shadow: -1px 1px 4px #9aa0b9;
-}
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-.sidebar {
-  color: #b3b8d4;
-  overflow-x: hidden !important;
-  position: relative;
-  background-color: #0c1e35;
-}
-.sidebar .sidebar-layout {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  z-index: 2;
-}
+        body {
+            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+            color: #333;
+        }
 
-.sidebar .sidebar-layout .sidebar-header > span {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.sidebar .sidebar-layout .sidebar-content {
-  flex-grow: 1;
-  padding: 10px 0;
-}
-.sidebar .sidebar-layout .sidebar-footer {
-  height: 64px;
-  min-height: 64px;
-  display: flex;
-  align-items: center;
-  border-top: 1px solid rgba(83, 93, 125, 0.3);
-  padding: 0 20px;
-}
-.sidebar .sidebar-layout .sidebar-footer > span {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
+        /* Статус бар */
+        .status-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 24px;
+            background: rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 10px;
+            font-size: 12px;
+            color: white;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
 
-.layout .sidebar .menu ul {
-  list-style-type: none;
-  padding: 0;
-  margin: 0;
-}
+        .status-left {
+            display: flex;
+            gap: 5px;
+        }
 
-@media screen and (min-width: 1024px){
-.layout .sidebar .menu .menu-item a {
-  display: flex;
-  align-items: center;
-  height: 30px;
-  padding: 0 20px;
-  color: #b3b8d4;
-}
-}
+        .status-right {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
 
-@media screen and (min-width : 0px) and (max-width : 1023px){
-.layout .sidebar .menu .menu-item a {
-  display: flex;
-  align-items: center;
-  height: 130px;
-  padding: 0 20px;
-  color: #b3b8d4;
-}
-}
+        /* Основной контейнер */
+        .desktop {
+            padding-top: 40px;
+            padding-bottom: 80px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
 
+        /* Заголовок */
+        .header {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: white;
+        }
 
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 300;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
 
-.layout .sidebar .menu .menu-item a .menu-title {
+        .header p {
+            font-size: 1rem;
+            opacity: 0.9;
+            font-weight: 300;
+        }
 
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex-grow: 1;
-  transition: color 0.3s;
-}
-.layout .sidebar .menu .menu-item div a .menu-title {
+        /* Сетка приложений */
+        .apps-grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+            padding: 1rem;
+            max-width: 400px;
+            margin: 0 auto;
+            justify-content: center;
+        }
 
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex-grow: 1;
-  transition: color 0.3s;
-}
-.layout .sidebar .menu .menu-item a .menu-prefix,
-.layout .sidebar .menu .menu-item a .menu-suffix {
-  display: inline-block;
-  padding: 5px;
-  opacity: 1;
-  transition: opacity 0.3s;
-}
-.layout .sidebar .menu .menu-item a:hover .menu-title {
-  color: #dee2ec;
-}
-.layout .sidebar .menu .menu-item a:hover .menu-icon {
-  color: #dee2ec;
-}
-.layout .sidebar .menu .menu-item a:hover .menu-icon i {
-  animation: swing ease-in-out 0.5s 1 alternate;
-}
-.layout .sidebar .menu .menu-item a:hover::after {
-  border-color: #dee2ec !important;
-}
-.layout .sidebar .menu .menu-item.sub-menu {
-  position: relative;
-}
+        /* Иконка приложения */
+        .app-icon {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: white;
+            padding: 1rem;
+            border-radius: 20px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            -webkit-tap-highlight-color: transparent;
+            position: relative;
+        }
 
+        .app-icon:hover {
+            transform: scale(1.05);
+        }
 
+        .app-icon:active {
+            transform: scale(0.95);
+        }
 
+        /* Фон иконки */
+        .icon-bg {
+            width: 60px;
+            height: 60px;
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
 
-@media screen and (min-width: 1024px){
-.layout .sidebar .menu .menu-item.sub-menu > a::after {
-  content: "";
-  transition: transform 0.3s;
-  border-right: 2px solid currentcolor;
-  border-bottom: 2px solid currentcolor;
-  width: 10px;
-  height: 10px;
-  transform: rotate(-45deg);
-}
-}
+        .app-icon:hover .icon-bg {
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+            transform: translateY(-2px);
+        }
 
-@media screen and (min-width : 0px) and (max-width : 1023px){
-.layout .sidebar .menu .menu-item.sub-menu > a::after {
-  content: "";
-  transition: transform 0.3s;
-  border-right: 2px solid currentcolor;
-  border-bottom: 2px solid currentcolor;
-  width: 35px;
-  height: 35px;
-  transform: rotate(-45deg);
-}
-}
+        /* Градиенты для иконок */
+        .gallery-icon { background: linear-gradient(135deg, #FF6B9D, #FF8E8E); }
+        .sudoku-icon { background: linear-gradient(135deg, #4FACFE, #00F2FE); }
+        .accel-icon { background: linear-gradient(135deg, #43E97B, #38F9D7); }
+        .labyr-icon { background: linear-gradient(135deg, #FA709A, #FEE140); }
+        .labyr2-icon { background: linear-gradient(135deg, #667eea, #764ba2); }
+        .fitness-icon { background: linear-gradient(135deg, #43E97B, #38F9D7); }
+        .images-icon { background: linear-gradient(135deg, #f093fb, #f5576c); }
+        .notepad-icon { background: linear-gradient(135deg, #ffecd2, #fcb69f); }
+        .terminal-icon { background: linear-gradient(135deg, #1e1e2e, #45475a); }
+        .game-icon    { background: linear-gradient(135deg, #ff6b35, #f7c59f); }
+        .game-rs-icon { background: linear-gradient(135deg, #43b89c, #7ee8a2); }
+        .gpu-folder-icon { background: linear-gradient(135deg, #1e1e2e, #313244); border: 1px solid rgba(255,255,255,0.1); }
+        /* Folder mini-grid */
+        .folder-mini {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 3px;
+            padding: 8px; width: 100%; height: 100%; box-sizing: border-box;
+        }
+        .folder-mini span {
+            border-radius: 4px; display: flex; align-items: center;
+            justify-content: center; font-size: 0.85rem;
+        }
+        .fm1 { background: linear-gradient(135deg, #ff6b35, #f7c59f); }
+        .fm2 { background: linear-gradient(135deg, #89dceb, #74c7ec); }
+        .fm3 { background: linear-gradient(135deg, #7ee8a2, #43b89c); }
+        .fm4 { background: linear-gradient(135deg, #cba6f7, #89b4fa); }
 
+        /* ── Folder overlay ── */
+        #folder-overlay {
+            display: none; position: fixed; inset: 0; z-index: 500;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
+            align-items: center; justify-content: center;
+        }
+        #folder-overlay.open { display: flex; }
+        #folder-popup {
+            background: rgba(24,24,37,0.92);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 22px;
+            padding: 20px 16px 16px;
+            min-width: 260px;
+            display: flex; flex-direction: column; align-items: center; gap: 14px;
+        }
+        #folder-popup h3 {
+            color: rgba(255,255,255,0.7); font-size: 12px;
+            font-family: -apple-system, sans-serif; font-weight: 400;
+            letter-spacing: 0.04em;
+        }
+        .folder-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 12px; width: 100%;
+        }
+        .folder-app {
+            display: flex; flex-direction: column; align-items: center;
+            text-decoration: none; color: white; gap: 5px;
+            padding: 6px 2px; border-radius: 14px;
+            transition: background 0.15s;
+        }
+        .folder-app:hover { background: rgba(255,255,255,0.08); }
+        .folder-app .icon-bg {
+            width: 52px; height: 52px; border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.6rem; box-shadow: 0 3px 12px rgba(0,0,0,0.25);
+        }
+        .folder-app .app-name { font-size: 0.68rem; text-align: center; opacity: 0.9; }
+        .bench-icon { background: linear-gradient(135deg, #f9e2af, #fab387); }
+        .synth-icon  { background: linear-gradient(135deg, #cba6f7, #b4befe); }
+        .sampler-icon{ background: linear-gradient(135deg, #f38ba8, #fab387); }
 
-.layout .sidebar .menu .menu-item.sub-menu > .sub-menu-list {
-  padding-left: 20px;
-  display: none;
-  overflow: hidden;
-  z-index: 999;
-}
-.layout .sidebar .menu .menu-item.sub-menu.open > a::after {
-  transform: rotate(45deg);
-}
-.layout .sidebar .menu .menu-item.active > a .menu-title {
-  color: #dee2ec;
-}
-.layout .sidebar .menu .menu-item.active > a::after {
-  border-color: #dee2ec;
-}
-.layout .sidebar .menu .menu-item.active > a .menu-icon {
-  color: #dee2ec;
-}
-.layout .sidebar .menu > ul > .sub-menu > .sub-menu-list {
-  background-color: #0b1a2c;
-}
-.layout .sidebar .menu.icon-shape-circle .menu-item a .menu-icon, .layout .sidebar .menu.icon-shape-rounded .menu-item a .menu-icon, .layout .sidebar .menu.icon-shape-square .menu-item a .menu-icon {
-  background-color: #0b1a2c;
-}
-.layout .sidebar .menu.icon-shape-circle .menu-item a .menu-icon {
-  border-radius: 50%;
-}
-.layout .sidebar .menu.icon-shape-rounded .menu-item a .menu-icon {
-  border-radius: 4px;
-}
-.layout .sidebar .menu.icon-shape-square .menu-item a .menu-icon {
-  border-radius: 0;
-}
-.layout .sidebar:not(.collapsed) .menu > ul > .menu-item.sub-menu > .sub-menu-list {
-  visibility: visible !important;
-  position: static !important;
-  transform: translate(0, 0) !important;
-}
-.layout .sidebar.collapsed .menu > ul > .menu-item > a .menu-prefix,
-.layout .sidebar.collapsed .menu > ul > .menu-item > a .menu-suffix {
-  opacity: 0;
-}
-.layout .sidebar.collapsed .menu > ul > .menu-item.sub-menu > a::after {
-  content: "";
-  width: 5px;
-  height: 5px;
-  background-color: currentcolor;
-  border-radius: 50%;
-  display: inline-block;
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  border: none;
-  transform: translateY(-50%);
-}
-.layout .sidebar.collapsed .menu > ul > .menu-item.sub-menu > a:hover::after {
-  background-color: #dee2ec;
-}
-.layout .sidebar.collapsed .menu > ul > .menu-item.sub-menu > .sub-menu-list {
-  transition: none !important;
-  width: 200px;
-  margin-left: 3px !important;
-  border-radius: 4px;
-  display: block !important;
-}
-.layout .sidebar.collapsed .menu > ul > .menu-item.active > a::after {
-  background-color: #dee2ec;
-}
-.layout .sidebar.has-bg-image .menu.icon-shape-circle .menu-item a .menu-icon, .layout .sidebar.has-bg-image .menu.icon-shape-rounded .menu-item a .menu-icon, .layout .sidebar.has-bg-image .menu.icon-shape-square .menu-item a .menu-icon {
-  background-color: rgba(11, 26, 44, 0.6);
-}
-.layout .sidebar.has-bg-image:not(.collapsed) .menu > ul > .sub-menu > .sub-menu-list {
-  background-color: rgba(11, 26, 44, 0.6);
-}
-.layout.rtl .sidebar .menu .menu-item a .menu-icon {
-  margin-left: 10px;
-  margin-right: 0;
-}
-.layout.rtl .sidebar .menu .menu-item.sub-menu > a::after {
-  transform: rotate(135deg);
-}
-.layout.rtl .sidebar .menu .menu-item.sub-menu > .sub-menu-list {
-  padding-left: 0;
-  padding-right: 20px;
-}
-.layout.rtl .sidebar .menu .menu-item.sub-menu.open > a::after {
-  transform: rotate(45deg);
-}
-.layout.rtl .sidebar.collapsed .menu > ul > .menu-item.sub-menu a::after {
-  right: auto;
-  left: 10px;
-}
-.layout.rtl .sidebar.collapsed .menu > ul > .menu-item.sub-menu > .sub-menu-list {
-  margin-left: -3px !important;
-}
+        /* Текст под иконкой */
+        .app-name {
+            font-size: 0.75rem;
+            font-weight: 400;
+            text-align: center;
+            opacity: 0.95;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+            line-height: 1.2;
+        }
 
-* {
-  box-sizing: border-box;
-}
+        /* Нижняя панель (док) */
+        .dock {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(20px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
 
+        .dock-apps {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
 
+        .dock-app {
+            width: 50px;
+            height: 50px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            text-decoration: none;
+            color: white;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
 
-@media screen and (min-width: 1024px){
-body {
-  margin: 0;
-  height: 100vh;
-  font-family: "Roboto", sans-serif;
-  color: #212529;
-  font-size: 1rem;
-}
-}
+        .dock-app:hover {
+            transform: scale(1.1) translateY(-5px);
+        }
 
-@media screen and (min-width : 0px) and (max-width : 1023px){
-  body {
-  margin: 0;
-  height: 100vh;
-  font-family: "Roboto", sans-serif;
-  color: #212529;
-  font-size: 5rem;
+        /* Адаптивность */
+        @media (max-width: 480px) {
+            .apps-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 1rem;
+                max-width: 300px;
+            }
 
-}
-}
+            .header h1 {
+                font-size: 1.5rem;
+            }
 
+            .icon-bg {
+                width: 55px;
+                height: 55px;
+                font-size: 1.8rem;
+            }
 
-a {
-  text-decoration: none;
-}
+            .dock-apps {
+                gap: 0.5rem;
+            }
 
-  </style>
+            .dock-app {
+                width: 45px;
+                height: 45px;
+                font-size: 1.3rem;
+            }
+        }
+
+        @media (min-width: 600px) {
+            .apps-grid {
+                grid-template-columns: repeat(5, 1fr);
+                max-width: 500px;
+                gap: 2rem;
+            }
+
+            .icon-bg {
+                width: 70px;
+                height: 70px;
+                font-size: 2.2rem;
+            }
+
+            .app-name {
+                font-size: 0.8rem;
+            }
+        }
+
+        /* Эффект нажатия */
+        .app-icon::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translate(-50%, -50%);
+            transition: all 0.3s ease;
+        }
+
+        .app-icon:active::before {
+            width: 100px;
+            height: 100px;
+        }
+    </style>
 </head>
 <body>
-  <div class="layout has-sidebar fixed-sidebar fixed-header">
-  <aside id="sidebar" class="sidebar break-point-lg has-bg-image">
-
-    <div class="sidebar-layout">
-      <div class="sidebar-header">
-
-      </div>
-      <div class="sidebar-content">
-        <nav class="menu open-current-submenu" id="generator">
-
-        </nav>
-      </div>
-      <div class="sidebar-footer">
-          <label for="modeCheckbox">
-            <input type="checkbox" id="modeCheckbox"> Режим редактирования
-        </label>
-      </div>
+    <!-- Статус бар -->
+    <div class="status-bar">
+        <div class="status-left">
+            <span id="time"></span>
+        </div>
+        <div class="status-right">
+            <span>📶</span>
+            <span>📱</span>
+            <span id="battery">🔋</span>
+        </div>
     </div>
-  </aside>
-  <div id="overlay" class="overlay"></div>
 
-  </div>
-</div>
+    <!-- Рабочий стол -->
+    <div class="desktop">
+        <header class="header">
+            <h1>📱 Рабочий стол</h1>
+            <p>Выберите приложение</p>
+        </header>
+
+        <!-- Сетка приложений -->
+        <main class="apps-grid">
+            <a href="/gallery" class="app-icon">
+                <div class="icon-bg gallery-icon">📸</div>
+                <span class="app-name">Галерея</span>
+            </a>
+
+            <a href="/accel" class="app-icon">
+                <div class="icon-bg accel-icon">📱</div>
+                <span class="app-name">Сенсоры</span>
+            </a>
+
+            <div class="app-icon" onclick="openGamesFolder()" style="cursor:pointer">
+                <div class="icon-bg" style="background:linear-gradient(135deg,#1e1e2e,#313244);border:1px solid rgba(255,255,255,0.1)">
+                    <div class="folder-mini">
+                        <span style="background:linear-gradient(135deg,#4FACFE,#00F2FE);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:0.85rem">🔢</span>
+                        <span style="background:linear-gradient(135deg,#FA709A,#FEE140);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:0.85rem">🌀</span>
+                        <span style="background:linear-gradient(135deg,#cba6f7,#89b4fa);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:0.85rem">🟦</span>
+                        <span style="background:linear-gradient(135deg,#f38ba8,#e64553);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:0.85rem">🔫</span>
+                    </div>
+                </div>
+                <span class="app-name">Игры</span>
+            </div>
+
+            <a href="/notepad" class="app-icon">
+                <div class="icon-bg notepad-icon">📝</div>
+                <span class="app-name">Блокнот</span>
+            </a>
+
+            <div class="app-icon" onclick="openEntFolder()" style="cursor:pointer">
+                <div class="icon-bg" style="background:linear-gradient(135deg,#2a1a3a,#3d2050);border:1px solid rgba(203,166,247,0.3)">
+                    <div class="folder-mini">
+                        <span style="background:linear-gradient(135deg,#cba6f7,#b4befe);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:0.85rem">🎹</span>
+                        <span style="background:linear-gradient(135deg,#f38ba8,#fab387);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:0.85rem">🥁</span>
+                        <span style="background:linear-gradient(135deg,#89dceb,#74c7ec);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:0.85rem">🎵</span>
+                        <span style="background:linear-gradient(135deg,#a6e3a1,#40a02b);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:0.85rem">🎶</span>
+                    </div>
+                </div>
+                <span class="app-name">Музыка</span>
+            </div>
+
+            <div class="app-icon" onclick="openGPUFolder()" style="cursor:pointer">
+                <div class="icon-bg gpu-folder-icon">
+                    <div class="folder-mini">
+                        <span class="fm1">🎮</span>
+                        <span class="fm2">⬛</span>
+                        <span class="fm3">🦀</span>
+                        <span class="fm4">⚡</span>
+                    </div>
+                </div>
+                <span class="app-name">GPU</span>
+            </div>
+        </main>
+    </div>
+
+    <!-- Папка Игры -->
+    <div id="games-overlay" onclick="if(event.target===this)closeGamesFolder()" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);align-items:center;justify-content:center">
+        <div id="folder-popup">
+            <h3>Игры</h3>
+            <div class="folder-grid">
+                <a href="/sudoku" class="folder-app">
+                    <div class="icon-bg sudoku-icon">🔢</div>
+                    <span class="app-name">Судоку</span>
+                </a>
+                <a href="/labyr" class="folder-app">
+                    <div class="icon-bg labyr-icon">🌀</div>
+                    <span class="app-name">Лабиринт</span>
+                </a>
+                <a href="/labyr2" class="folder-app">
+                    <div class="icon-bg labyr2-icon">🎯</div>
+                    <span class="app-name">Лабиринт 2</span>
+                </a>
+                <a href="/tetris" class="folder-app">
+                    <div class="icon-bg" style="background:linear-gradient(135deg,#cba6f7,#89b4fa)">🟦</div>
+                    <span class="app-name">Тетрис</span>
+                </a>
+                <a href="/minesweeper" class="folder-app">
+                    <div class="icon-bg" style="background:linear-gradient(135deg,#f38ba8,#fab387)">💣</div>
+                    <span class="app-name">Сапёр</span>
+                </a>
+                <a href="/stackattack" class="folder-app">
+                    <div class="icon-bg" style="background:linear-gradient(135deg,#a6e3a1,#40a02b)">🧱</div>
+                    <span class="app-name">Stack Attack</span>
+                </a>
+                <a href="/contra" class="folder-app">
+                    <div class="icon-bg" style="background:linear-gradient(135deg,#f38ba8,#e64553)">🔫</div>
+                    <span class="app-name">Контра</span>
+                </a>
+                <a href="/checkers" class="folder-app">
+                    <div class="icon-bg" style="background:linear-gradient(135deg,#e64553,#f38ba8)">🔴</div>
+                    <span class="app-name">Шашки</span>
+                </a>
+                <a href="/chess" class="folder-app">
+                    <div class="icon-bg" style="background:linear-gradient(135deg,#f0d9b5,#b58863)">♟</div>
+                    <span class="app-name">Шахматы</span>
+                </a>
+                <a href="/solitaire" class="folder-app">
+                    <div class="icon-bg" style="background:linear-gradient(135deg,#1a5e3a,#40a02b)">🃏</div>
+                    <span class="app-name">Косынка</span>
+                </a>
+                <a href="/reversi" class="folder-app">
+                    <div class="icon-bg" style="background:linear-gradient(135deg,#1e1e2e,#6c7086)">⬤</div>
+                    <span class="app-name">Реверси</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Папка Музыка -->
+    <div id="ent-overlay" onclick="if(event.target===this)closeEntFolder()" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);align-items:center;justify-content:center">
+        <div id="ent-popup" style="background:rgba(24,24,37,0.92);border:1px solid rgba(203,166,247,0.2);border-radius:22px;padding:20px 16px 16px;min-width:220px;display:flex;flex-direction:column;align-items:center;gap:14px">
+            <h3 style="color:rgba(255,255,255,0.7);font-size:12px;font-family:-apple-system,sans-serif;font-weight:400;letter-spacing:0.04em">Музыка</h3>
+            <div class="folder-grid">
+                <a href="/synth" class="folder-app">
+                    <div class="icon-bg synth-icon">🎹</div>
+                    <span class="app-name">Синтезатор</span>
+                </a>
+                <a href="/sampler" class="folder-app">
+                    <div class="icon-bg sampler-icon">🥁</div>
+                    <span class="app-name">MPC Сэмплер</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Папка GPU demos -->
+    <div id="folder-overlay" onclick="if(event.target===this)closeGPUFolder()">
+        <div id="folder-popup">
+            <h3>GPU Demos</h3>
+            <div class="folder-grid">
+                <a href="/game" class="folder-app">
+                    <div class="icon-bg game-icon">🎮</div>
+                    <span class="app-name">JS<br>WebGPU</span>
+                </a>
+                <a href="/game/webgl" class="folder-app">
+                    <div class="icon-bg" style="background:linear-gradient(135deg,#89dceb,#74c7ec)">⬛</div>
+                    <span class="app-name">JS<br>WebGL2</span>
+                </a>
+                <a href="/game/rs" class="folder-app">
+                    <div class="icon-bg game-rs-icon">🦀</div>
+                    <span class="app-name">Rust<br>WebGL/GPU</span>
+                </a>
+                <a href="/arena" class="folder-app">
+                    <div class="icon-bg" style="background:linear-gradient(135deg,#a6e3a1,#40a02b)">⛏</div>
+                    <span class="app-name">Arena<br>Voxel</span>
+                </a>
+                <a href="/game/bench" class="folder-app" style="grid-column:1/-1;justify-self:center;width:100%">
+                    <div class="icon-bg bench-icon" style="width:52px;height:52px">⚡</div>
+                    <span class="app-name">Benchmark</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Нижняя панель (док) -->
+    <div class="dock">
+        <div class="dock-apps">
+            <a href="/gallery" class="dock-app gallery-icon">📷</a>
+            <a href="/sudoku" class="dock-app sudoku-icon">🎲</a>
+            <a href="/notepad" class="dock-app notepad-icon">📝</a>
+        </div>
+    </div>
+
+    <script>
+        // Обновление времени
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('ru-RU', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            document.getElementById('time').textContent = timeString;
+        }
+
+        // Анимация батареи
+        function animateBattery() {
+            const battery = document.getElementById('battery');
+            const icons = ['🔋', '🔌', '⚡'];
+            let index = 0;
+            
+            setInterval(() => {
+                battery.textContent = icons[index];
+                index = (index + 1) % icons.length;
+            }, 2000);
+        }
+
+        // Инициализация
+        updateTime();
+        setInterval(updateTime, 1000);
+        animateBattery();
+
+        // Эффект вибрации при нажатии (если поддерживается)
+        document.querySelectorAll('.app-icon, .dock-app').forEach(app => {
+            app.addEventListener('touchstart', () => {
+                if (navigator.vibrate) {
+                    navigator.vibrate(50);
+                }
+            });
+        });
+
+        // Games folder
+        function openGamesFolder()  { document.getElementById('games-overlay').style.display = 'flex'; }
+        function closeGamesFolder() { document.getElementById('games-overlay').style.display = 'none'; }
+
+        // GPU folder
+        function openGPUFolder()  { document.getElementById('folder-overlay').classList.add('open'); }
+        function closeGPUFolder() { document.getElementById('folder-overlay').classList.remove('open'); }
+
+        // Music folder
+        function openEntFolder()  { document.getElementById('ent-overlay').style.display = 'flex'; }
+        function closeEntFolder() { document.getElementById('ent-overlay').style.display = 'none'; }
+
+        // Предотвращение выделения текста
+        document.addEventListener('selectstart', e => e.preventDefault());
+        
+        // Предотвращение контекстного меню на долгом нажатии
+        document.addEventListener('contextmenu', e => e.preventDefault());
+    </script>
 </body>
-
-<template id="post_template">
-    <a id="hr" href="#" >
-        <span id="nm" class="menu-title"></span>
-    </a>
-
-  </template>
-
-
-
-<script type="application/javascript">
-const alldir = {{ dirlist|tojson }}
-
-
-
-function setCookie(name, value, days) {
-  let expires = "";
-  if (days) {
-    const date = new Date();
-    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-    expires = "; expires=" + date.toUTCString();
-  }
-  document.cookie = name + "=" + (value || "") + expires + "; path=/";
-}
-function getCookie(name) {
-  const nameEQ = name + "=";
-  const ca = document.cookie.split(';');
-  for (let i = 0; i < ca.length; i++) {
-    let c = ca[i];
-    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
-    if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
-  }
-  return null;
-}
-const mode = getCookie('mode');
-  if (mode === '1') {
-    document.getElementById('modeCheckbox').checked = true;
-    // Дополнительный код для включения режима
-  } else {
-    document.getElementById('modeCheckbox').checked = false;
-    // Дополнительный код для выключения режима
-  }
-var myTarget = document.getElementById('generator');
-myTarget.appendChild(renderList(alldir,'no'));
-
-
-document.getElementById('modeCheckbox').addEventListener('change', function() {
-  if (this.checked) {
-    setCookie('mode', '1', 7); // Устанавливаем куку на 7 дней со значением 1
-  } else {
-    setCookie('mode', '0', 7); // Устанавливаем куку на 7 дней со значением 0
-  }
-});
-
-function renderList(obj,ischild) {
-
-  function formatPrice(str) {
-    var result = '$';
-    if (parseFloat(str) < 1) result += '0';
-    return result + str;
-  }
-  function generateurl(srt){
-  const params = new URLSearchParams({
-  urla: srt
-    });
-  var urlb = 'preview?'+params
-  return urlb
-  }
-  console.log(ischild)
-
-  if (ischild === 'child'){
-  var result = document.createElement('div');
-  result.className="sub-menu-list"
-  var ul = document.createElement('ul');
-  result.append(ul)
-  }else{
-  var result = document.createElement('ul');
-  }
-  for (key in obj) {
-    const template = document.getElementById('post_template')
-    var list = document.createElement('li')
-    const post = template.content.cloneNode(true)
-    if (typeof obj[key]['sdir'] === 'object' && Object.keys(obj[key]['sdir']).length > 0) {
-    list.className="menu-item sub-menu"
-    }else{
-    list.className="menu-item"
-    post.getElementById('hr').href = generateurl(obj[key]['dir'])
-    }
-    var linkText = document.createTextNode(key);
-    post.getElementById('nm').appendChild(linkText);
-    list.appendChild(post);
-
-
-  if (typeof obj[key]['sdir'] === 'object' && Object.keys(obj[key]['sdir']).length > 0) {
-      list.appendChild(renderList(obj[key]['sdir'],'child'));
-  } else {
-  }
-  result.appendChild(list);
-  }
-  return result;
-}
-
-const ANIMATION_DURATION = 300;
-
-const SIDEBAR_EL = document.getElementById("sidebar");
-
-const SUB_MENU_ELS = document.querySelectorAll(
-  ".menu > ul > .menu-item.sub-menu"
-);
-
-const FIRST_SUB_MENUS_BTN = document.querySelectorAll(
-  ".menu > ul > .menu-item.sub-menu > a"
-);
-
-const INNER_SUB_MENUS_BTN = document.querySelectorAll(
-  ".menu > ul > .menu-item.sub-menu .menu-item.sub-menu > a"
-);
-
-
-const slideUp = (target, duration = ANIMATION_DURATION) => {
-  const { parentElement } = target;
-  parentElement.classList.remove("open");
-  target.style.transitionProperty = "height, margin, padding";
-  target.style.transitionDuration = `${duration}ms`;
-  target.style.boxSizing = "border-box";
-  target.style.height = `${target.offsetHeight}px`;
-  target.offsetHeight;
-  target.style.overflow = "hidden";
-  target.style.height = 0;
-  target.style.paddingTop = 0;
-  target.style.paddingBottom = 0;
-  target.style.marginTop = 0;
-  target.style.marginBottom = 0;
-  window.setTimeout(() => {
-    target.style.display = "none";
-    target.style.removeProperty("height");
-    target.style.removeProperty("padding-top");
-    target.style.removeProperty("padding-bottom");
-    target.style.removeProperty("margin-top");
-    target.style.removeProperty("margin-bottom");
-    target.style.removeProperty("overflow");
-    target.style.removeProperty("transition-duration");
-    target.style.removeProperty("transition-property");
-  }, duration);
-};
-const slideDown = (target, duration = ANIMATION_DURATION) => {
-  const { parentElement } = target;
-  parentElement.classList.add("open");
-  target.style.removeProperty("display");
-  let { display } = window.getComputedStyle(target);
-  if (display === "none") display = "block";
-  target.style.display = display;
-  const height = target.offsetHeight;
-  target.style.overflow = "hidden";
-  target.style.height = 0;
-  target.style.paddingTop = 0;
-  target.style.paddingBottom = 0;
-  target.style.marginTop = 0;
-  target.style.marginBottom = 0;
-  target.offsetHeight;
-  target.style.boxSizing = "border-box";
-  target.style.transitionProperty = "height, margin, padding";
-  target.style.transitionDuration = `${duration}ms`;
-  target.style.height = `${height}px`;
-  target.style.removeProperty("padding-top");
-  target.style.removeProperty("padding-bottom");
-  target.style.removeProperty("margin-top");
-  target.style.removeProperty("margin-bottom");
-  window.setTimeout(() => {
-    target.style.removeProperty("height");
-    target.style.removeProperty("overflow");
-    target.style.removeProperty("transition-duration");
-    target.style.removeProperty("transition-property");
-  }, duration);
-};
-
-const slideToggle = (target, duration = ANIMATION_DURATION) => {
-  if (window.getComputedStyle(target).display === "none")
-    return slideDown(target, duration);
-  return slideUp(target, duration);
-};
-
-
-/**
- * sidebar toggle handler (on break point )
- */
-
-
-
-/**
- * toggle sidebar on overlay click
- */
-document.getElementById("overlay").addEventListener("click", () => {
-  SIDEBAR_EL.classList.toggle("toggled");
-});
-
-const defaultOpenMenus = document.querySelectorAll(".menu-item.sub-menu.open");
-
-defaultOpenMenus.forEach((element) => {
-  element.lastElementChild.style.display = "block";
-});
-
-/**
- * handle top level submenu click
- */
-FIRST_SUB_MENUS_BTN.forEach((element) => {
-  element.addEventListener("click", () => {
-    console.log('click')
-    if (SIDEBAR_EL.classList.contains("collapsed"))
-    {}
-    else{
-      const parentMenu = element.closest(".menu.open-current-submenu");
-      if (parentMenu)
-        parentMenu
-          .querySelectorAll(":scope > ul > .menu-item.sub-menu > a")
-          .forEach(
-            (el) =>
-              window.getComputedStyle(el.nextElementSibling).display !==
-                "none" && slideUp(el.nextElementSibling)
-          );
-      slideToggle(element.nextElementSibling);
-    }
-  });
-});
-
-/**
- * handle inner submenu click
- */
-INNER_SUB_MENUS_BTN.forEach((element) => {
-  element.addEventListener("click", () => {
-    slideToggle(element.nextElementSibling);
-  });
-});
-
-</script>
 </html>
