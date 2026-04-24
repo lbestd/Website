@@ -308,7 +308,10 @@ async def gallery(request):
 
 @aiohttp_jinja2.template("menu.html")
 async def menu(request):
-    return {'title': 'Главная - Портфолио проектов'}
+    global _gallery_cache
+    if _gallery_cache is None:
+        await _refresh_gallery_cache()
+    return {'title': 'Главная - Портфолио проектов', 'dirlist': _gallery_cache}
 
 @aiohttp_jinja2.template("arena.html")
 async def arena(request):
