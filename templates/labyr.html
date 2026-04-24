@@ -1,10 +1,248 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>Title</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Лабиринт с Гироскопом</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #222;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    canvas {
+      display: block;
+      background: #fff;
+      margin: 10px 0;
+    }
+    #info {
+      color: white;
+      padding-top: 10px;
+    }
+    #controls {
+      margin-bottom: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border: none;
+      background-color: #4CAF50;
+      color: white;
+      border-radius: 5px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+  </style>
 </head>
 <body>
 
+  <div id="info">Поворачивай телефон, чтобы двигать шарик. Доберись до жёлтого круга!</div>
+  <canvas id="mazeCanvas"></canvas>
+  <div id="controls">
+    <button onclick="resetMaze()">Сгенерировать заново</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('mazeCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const cols = 10;
+    const rows = 15;
+    const cellSize = 40;
+
+    canvas.width = cols * cellSize;
+    canvas.height = rows * cellSize;
+
+    class Cell {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.walls = [true, true, true, true]; // top, right, bottom, left
+        this.visited = false;
+      }
+
+      draw() {
+        const x = this.x * cellSize;
+        const y = this.y * cellSize;
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+
+        if (this.walls[0]) drawLine(x, y, x + cellSize, y); // top
+        if (this.walls[1]) drawLine(x + cellSize, y, x + cellSize, y + cellSize); // right
+        if (this.walls[2]) drawLine(x + cellSize, y + cellSize, x, y + cellSize); // bottom
+        if (this.walls[3]) drawLine(x, y + cellSize, x, y); // left
+      }
+    }
+
+    function drawLine(x1, y1, x2, y2) {
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    }
+
+    let grid, current, stack;
+    let ball;
+    let startCell, finishCell;
+
+    function index(x, y) {
+      if (x < 0 || y < 0 || x >= cols || y >= rows) return -1;
+      return x + y * cols;
+    }
+
+    function getNeighbors(cell) {
+      const neighbors = [];
+      const directions = [
+        [0, -1], // top
+        [1, 0],  // right
+        [0, 1],  // bottom
+        [-1, 0]  // left
+      ];
+      directions.forEach(([dx, dy], i) => {
+        const neighbor = grid[index(cell.x + dx, cell.y + dy)];
+        if (neighbor && !neighbor.visited) {
+          neighbors.push({ cell: neighbor, direction: i });
+        }
+      });
+      return neighbors;
+    }
+
+    function generateMaze() {
+      grid = [];
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          grid.push(new Cell(x, y));
+        }
+      }
+
+      current = grid[0];
+      stack = [];
+      recursiveGeneration();
+    }
+
+    function recursiveGeneration() {
+      current.visited = true;
+      const neighbors = getNeighbors(current);
+      if (neighbors.length > 0) {
+        const { cell: next, direction } = neighbors[Math.floor(Math.random() * neighbors.length)];
+        current.walls[direction] = false;
+        next.walls[(direction + 2) % 4] = false;
+        stack.push(current);
+        current = next;
+        recursiveGeneration();
+      } else if (stack.length > 0) {
+        current = stack.pop();
+        recursiveGeneration();
+      }
+    }
+
+    function drawMaze() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      grid.forEach(cell => cell.draw());
+
+      // Старт
+      ctx.fillStyle = "green";
+      ctx.beginPath();
+      ctx.arc(cellSize / 2, cellSize / 2, 10, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Финиш
+      ctx.fillStyle = "gold";
+      const fx = finishCell.x * cellSize + cellSize / 2;
+      const fy = finishCell.y * cellSize + cellSize / 2;
+      ctx.beginPath();
+      ctx.arc(fx, fy, 10, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function getCellAt(x, y) {
+      return grid[index(Math.floor(x / cellSize), Math.floor(y / cellSize))];
+    }
+
+    function updateBall() {
+      let newX = ball.x + ball.vx;
+      let newY = ball.y + ball.vy;
+
+      let cell = getCellAt(ball.x, ball.y);
+      if (!cell) return;
+
+      const cx = cell.x * cellSize;
+      const cy = cell.y * cellSize;
+
+      if (ball.vy < 0 && cell.walls[0] && ball.y - ball.radius + ball.vy < cy) ball.vy = 0;
+      if (ball.vy > 0 && cell.walls[2] && ball.y + ball.radius + ball.vy > cy + cellSize) ball.vy = 0;
+      if (ball.vx > 0 && cell.walls[1] && ball.x + ball.radius + ball.vx > cx + cellSize) ball.vx = 0;
+      if (ball.vx < 0 && cell.walls[3] && ball.x - ball.radius + ball.vx < cx) ball.vx = 0;
+
+      ball.x += ball.vx;
+      ball.y += ball.vy;
+
+      ball.x = Math.max(ball.radius, Math.min(canvas.width - ball.radius, ball.x));
+      ball.y = Math.max(ball.radius, Math.min(canvas.height - ball.radius, ball.y));
+
+      checkWin();
+    }
+
+    function drawBall() {
+      ctx.beginPath();
+      ctx.fillStyle = "red";
+      ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function checkWin() {
+      const fx = finishCell.x * cellSize + cellSize / 2;
+      const fy = finishCell.y * cellSize + cellSize / 2;
+      const dx = ball.x - fx;
+      const dy = ball.y - fy;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance < ball.radius + 10) {
+        alert("🎉 Победа! Нажми OK для новой игры.");
+        resetMaze();
+      }
+    }
+
+    function loop() {
+      drawMaze();
+      updateBall();
+      drawBall();
+      requestAnimationFrame(loop);
+    }
+
+    // Гироскоп
+    window.addEventListener('deviceorientation', function(event) {
+      const gamma = event.gamma || 0; // left-right
+      const beta = event.beta || 0;   // front-back
+      ball.vx = gamma * 0.1;
+      ball.vy = beta * 0.1;
+    });
+
+    function resetMaze() {
+      generateMaze();
+
+      // Установка старта и финиша
+      startCell = grid[0];
+      finishCell = grid[grid.length - 1];
+
+      ball = {
+        x: cellSize / 2,
+        y: cellSize / 2,
+        radius: 8,
+        vx: 0,
+        vy: 0
+      };
+    }
+
+    // Инициализация
+    resetMaze();
+    loop();
+  </script>
 </body>
 </html>

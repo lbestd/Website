@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Сэмплер MPC</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #11111b; --surface: #1e1e2e; --s2: #181825;
+  --ov: #313244; --muted: #6c7086; --sub: #a6adc8; --text: #cdd6f4;
+  --mauve: #cba6f7; --blue: #89b4fa; --green: #a6e3a1;
+  --red: #f38ba8; --peach: #fab387; --yellow: #f9e2af;
+  --teal: #94e2d5; --pink: #f5c2e7; --lav: #b4befe; --sky: #89dceb;
+  --r0: #3d1f1f; --r1: #1f2a3d; --r2: #1f3d26; --r3: #3a321f;
+  --r0h: #c45050; --r1h: #5080c4; --r2h: #50a065; --r3h: #c4a040;
+}
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: system-ui, sans-serif;
+  display: flex; flex-direction: column;
+  height: 100dvh; overflow: hidden; user-select: none;
+}
+
+/* TOP */
+#top-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 12px; background: var(--surface);
+  border-bottom: 1px solid var(--ov);
+  flex-shrink: 0; height: 46px;
+}
+#top-bar a { color: var(--blue); text-decoration: none; font-size: 13px; }
+.title { font-size: 15px; font-weight: 700; color: var(--mauve); flex: 1; }
+.tbtn {
+  background: var(--ov); border: none; border-radius: 8px;
+  color: var(--text); font-size: 12px; padding: 5px 10px;
+  cursor: pointer; -webkit-tap-highlight-color: transparent; flex-shrink: 0;
+}
+.tbtn.on { background: var(--mauve); color: var(--bg); }
+#bpm-wrap { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--sub); }
+#bpm-val { font-weight: 700; min-width: 26px; color: var(--text); }
+input#bpm-r { width: 60px; accent-color: var(--mauve); cursor: pointer; touch-action: pan-x; }
+
+/* TOOLBAR */
+#toolbar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 10px; background: var(--s2);
+  border-bottom: 1px solid var(--ov); flex-shrink: 0; height: 40px;
+  touch-action: manipulation;
+}
+.kit-sel {
+  flex: 1; max-width: 160px; background: var(--ov);
+  border: 1px solid var(--ov); border-radius: 7px;
+  color: var(--text); font-size: 12px; padding: 4px 8px;
+  cursor: pointer; appearance: none; -webkit-appearance: none;
+}
+
+/* BANKS */
+#banks {
+  display: flex; align-items: center; gap: 5px;
+  padding: 0 10px; background: var(--s2); flex-shrink: 0; height: 36px;
+  border-bottom: 1px solid var(--ov); touch-action: manipulation;
+}
+.bank-btn {
+  background: var(--ov); border: 1px solid transparent; border-radius: 6px;
+  color: var(--sub); font-size: 12px; font-weight: 700;
+  width: 28px; height: 24px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.bank-btn.on { border-color: var(--mauve); color: var(--mauve); background: #2a2040; }
+#bank-lbl { font-size: 11px; color: var(--muted); flex: 1; }
+
+/* MAIN AREA */
+#main-area { flex: 1; display: flex; min-height: 0; overflow: hidden; }
+
+/* PAD GRID */
+#pad-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 6px; padding: 8px; flex: 1;
+  touch-action: none;
+}
+.pad {
+  border-radius: 10px; position: relative;
+  display: flex; flex-direction: column;
+  justify-content: flex-end; padding: 6px 8px;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  overflow: hidden; border: 2px solid rgba(255,255,255,.06);
+  transition: filter .06s;
+}
+.pad.r0 { background: var(--r0); } .pad.r1 { background: var(--r1); }
+.pad.r2 { background: var(--r2); } .pad.r3 { background: var(--r3); }
+.pad.empty { background: var(--ov) !important; }
+.pad.sel { box-shadow: 0 0 0 2px rgba(255,255,255,.8); }
+.pad.hit { filter: brightness(2); }
+.pad-num { position: absolute; top: 5px; left: 7px; font-size: 9px; color: rgba(255,255,255,.3); }
+.pad-name { font-size: 10px; font-weight: 600; color: rgba(255,255,255,.9); line-height: 1.3; }
+.pad-sub { font-size: 8px; color: rgba(255,255,255,.45); }
+/* Active step indicator on pad */
+.pad-seq-dot {
+  position: absolute; top: 5px; right: 6px;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green); display: none;
+}
+.pad-seq-dot.vis { display: block; }
+.pad-seq-dot.playing { background: var(--peach); animation: pbeat .15s ease-out; }
+@keyframes pbeat { 0%{transform:scale(2)} 100%{transform:scale(1)} }
+
+/* SIDEBAR */
+#sidebar {
+  width: 64px; display: flex; flex-direction: column; gap: 5px;
+  padding: 8px 6px; flex-shrink: 0; touch-action: manipulation;
+}
+@media(max-width:380px){ #sidebar { width: 50px; } }
+.sbtn {
+  background: var(--ov); border: none; border-radius: 8px;
+  color: var(--sub); font-size: 10px; text-align: center;
+  padding: 8px 2px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; flex-shrink: 0; line-height: 1.4;
+}
+.sbtn.on { background: var(--mauve); color: var(--bg); }
+.sbtn.rec-on { background: var(--red); color: var(--bg); animation: blink .7s infinite; }
+@keyframes blink { 50%{opacity:.5} }
+
+/* BOTTOM */
+#bottom {
+  background: var(--surface); border-top: 1px solid var(--ov);
+  flex-shrink: 0; display: flex; flex-direction: column;
+  touch-action: manipulation;
+}
+#btabs { display: flex; border-bottom: 1px solid var(--ov); }
+.btab {
+  flex: 1; background: none; border: none; color: var(--muted);
+  font-size: 11px; padding: 6px; cursor: pointer;
+  text-transform: uppercase; letter-spacing: .05em;
+  -webkit-tap-highlight-color: transparent;
+  border-bottom: 2px solid transparent;
+}
+.btab.on { color: var(--mauve); border-bottom-color: var(--mauve); }
+.bpane { display: none; }
+.bpane.on { display: flex; }
+
+/* PAD EDIT PANE */
+#pane-pad { padding: 7px 10px; gap: 8px 12px; flex-wrap: wrap; align-items: flex-start; }
+.pp { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 65px; }
+.pp-lbl { display: flex; justify-content: space-between; font-size: 10px; }
+.pp-lbl span:first-child { color: var(--muted); text-transform: uppercase; }
+.pp-lbl span:last-child { color: var(--sub); }
+input[type=range].pp-sl { width: 100%; accent-color: var(--mauve); height: 20px; touch-action: pan-x; cursor: pointer; }
+#pad-name-in {
+  background: var(--ov); border: 1px solid var(--ov); border-radius: 6px;
+  color: var(--text); font-size: 12px; padding: 4px 8px;
+  outline: none; touch-action: auto; flex: 1; min-width: 90px;
+}
+#pad-name-in:focus { border-color: var(--mauve); }
+.load-btn {
+  background: var(--ov); border: 1px solid var(--mauve); border-radius: 7px;
+  color: var(--mauve); font-size: 11px; padding: 5px 9px;
+  cursor: pointer; -webkit-tap-highlight-color: transparent; white-space: nowrap;
+  align-self: flex-end;
+}
+
+/* SEQUENCER PANE */
+#pane-seq { flex-direction: column; padding: 6px 10px; gap: 5px; }
+#seq-ctrl { display: flex; align-items: center; gap: 6px; }
+#seq-pad-lbl { font-size: 11px; color: var(--sub); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#seq-steps {
+  display: grid; grid-template-columns: repeat(16, 1fr); gap: 3px;
+}
+.step {
+  aspect-ratio: 1; border-radius: 4px; background: var(--ov);
+  cursor: pointer; border: 1px solid transparent;
+  -webkit-tap-highlight-color: transparent; position: relative;
+}
+.step.on { background: var(--mauve); }
+.step.cur { box-shadow: 0 0 0 2px var(--green); }
+.step.on.cur { background: var(--green); }
+/* Group steps visually */
+.step:nth-child(4n) { margin-right: 2px; }
+
+/* LOAD MODAL */
+#modal {
+  position: fixed; inset: 0; background: rgba(0,0,0,.8);
+  display: none; align-items: flex-end; justify-content: center;
+  z-index: 100; padding: 0;
+}
+#modal.open { display: flex; }
+.modal-box {
+  background: var(--surface); border-radius: 16px 16px 0 0;
+  width: 100%; max-width: 500px; padding: 20px 16px 32px;
+  max-height: 80dvh; overflow-y: auto; touch-action: pan-y;
+}
+.modal-title { font-size: 15px; font-weight: 700; color: var(--mauve); margin-bottom: 14px; }
+.kit-opt {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+  background: var(--s2); border-radius: 10px; cursor: pointer;
+  margin-bottom: 7px; border: 1px solid transparent;
+  -webkit-tap-highlight-color: transparent;
+}
+.kit-opt:active { border-color: var(--mauve); }
+.kit-icon { font-size: 24px; }
+.kit-info h4 { font-size: 13px; }
+.kit-info p { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.modal-sep { height: 1px; background: var(--ov); margin: 12px 0; }
+.drop-zone {
+  border: 2px dashed var(--ov); border-radius: 10px;
+  padding: 20px; text-align: center; cursor: pointer;
+  font-size: 12px; color: var(--muted); -webkit-tap-highlight-color: transparent;
+}
+.drop-zone.drag { border-color: var(--mauve); color: var(--mauve); }
+.modal-footer { display: flex; justify-content: flex-end; margin-top: 14px; }
+</style>
+</head>
+<body>
+
+<div id="top-bar">
+  <a href="/">←</a>
+  <span class="title">MPC Сэмплер</span>
+  <a href="/synth" style="color:var(--sub);text-decoration:none;font-size:12px;flex-shrink:0">🎹 Синт</a>
+  <div id="bpm-wrap">
+    <span>BPM</span>
+    <input type="range" id="bpm-r" min="60" max="220" value="120">
+    <span id="bpm-val">120</span>
+  </div>
+</div>
+
+<div id="toolbar">
+  <select id="kit-sel" class="kit-sel"></select>
+  <button class="tbtn" id="btn-load-kit">📂 Набор</button>
+</div>
+
+<div id="banks">
+  <div class="bank-btn on" data-bank="0">A</div>
+  <div class="bank-btn" data-bank="1">B</div>
+  <div class="bank-btn" data-bank="2">C</div>
+  <div class="bank-btn" data-bank="3">D</div>
+  <span id="bank-lbl">Банк A</span>
+</div>
+
+<div id="main-area">
+  <div id="pad-grid"></div>
+  <div id="sidebar">
+    <button class="sbtn" id="sbtn-rec">⏺<br>REC</button>
+    <button class="sbtn" id="sbtn-play">▶<br>Play</button>
+    <button class="sbtn" id="sbtn-seq">⏱<br>Seq</button>
+    <button class="sbtn" id="sbtn-clr">✕<br>Clear</button>
+  </div>
+</div>
+
+<div id="bottom">
+  <div id="btabs">
+    <button class="btab on" data-pane="pad">Пэд</button>
+    <button class="btab" data-pane="seq">Секвенсор</button>
+  </div>
+  <div class="bpane on" id="pane-pad">
+    <input type="text" id="pad-name-in" placeholder="Название" maxlength="16">
+    <div class="pp">
+      <div class="pp-lbl"><span>Громк</span><span id="v-vol">100%</span></div>
+      <input type="range" class="pp-sl" id="sl-vol" min="0" max="150" value="100">
+    </div>
+    <div class="pp">
+      <div class="pp-lbl"><span>Питч</span><span id="v-pitch">0</span></div>
+      <input type="range" class="pp-sl" id="sl-pitch" min="-24" max="24" value="0" step="1">
+    </div>
+    <div class="pp">
+      <div class="pp-lbl"><span>Затух</span><span id="v-decay">100%</span></div>
+      <input type="range" class="pp-sl" id="sl-decay" min="10" max="200" value="100">
+    </div>
+    <button class="load-btn" id="btn-load-pad">📄 Файл</button>
+  </div>
+  <div class="bpane" id="pane-seq">
+    <div id="seq-ctrl">
+      <span id="seq-pad-lbl">Пэд: —</span>
+      <button class="tbtn" id="btn-seq-tog">▶ Старт</button>
+      <button class="tbtn" id="btn-seq-clr">✕</button>
+    </div>
+    <div id="seq-steps"></div>
+  </div>
+</div>
+
+<!-- LOAD MODAL -->
+<div id="modal">
+  <div class="modal-box">
+    <div class="modal-title">Загрузить набор сэмплов</div>
+    <div id="kit-options"></div>
+    <div class="modal-sep"></div>
+    <div class="drop-zone" id="drop-zone">
+      📁 Перетащите аудиофайлы или нажмите для выбора<br>
+      <span style="font-size:10px;color:var(--muted)">WAV · MP3 · OGG — до 16 файлов назначаются на пэды</span>
+    </div>
+    <div class="modal-footer">
+      <button class="tbtn" id="modal-close">Закрыть</button>
+    </div>
+  </div>
+</div>
+<input type="file" id="file-multi" multiple accept="audio/*" style="display:none">
+<input type="file" id="file-single" accept="audio/*" style="display:none">
+
+<script>
+// ═══════════ AUDIO ═══════════
+let ac;
+function initAC() {
+  if (ac) return;
+  ac = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+// ═══════════ SAMPLE GENERATORS (no AC needed until playback) ═══════════
+function mkBuf(data) {
+  const buf = ac.createBuffer(1, data.length, ac.sampleRate);
+  buf.getChannelData(0).set(data); return buf;
+}
+const SR = 44100;
+
+function genData(dur, fn) {
+  const n = Math.floor(SR * dur), d = new Float32Array(n);
+  for (let i = 0; i < n; i++) d[i] = fn(i / SR, i, n);
+  return d;
+}
+
+const GENS = {
+  kick808:  (t=0) => genData(.6,  (s)=>{ const f=44*Math.pow(2,t/12)+200*Math.exp(-s*18); let ph=0; const a=Math.exp(-s*7)*(1-Math.exp(-s*600)); ph+=2*Math.PI*f/SR; return Math.sin(2*Math.PI*(44*Math.pow(2,t/12)+200*Math.exp(-s*18))*s-0.3)*a*.9; }),
+  snare808: (t=0) => genData(.28, (s)=>{ const n=Math.random()*2-1, tone=Math.sin(2*Math.PI*200*Math.pow(2,t/12)*s)*Math.exp(-s*28); return (n*Math.exp(-s*12)*.7+tone*.5+Math.exp(-s*200)*.35)*0.8; }),
+  hhcl:     (t=0) => genData(.09, (s)=>{ const fs=[400,653,869,1215,1560,2046].map(f=>f*Math.pow(2,t/12)); let v=0; fs.forEach(f=>v+=Math.sin(2*Math.PI*f*s)); return (v/6*.5+(Math.random()*2-1)*.5)*Math.exp(-s*45)*.6; }),
+  hhop:     (t=0) => genData(.5,  (s)=>{ const fs=[400,653,869,1215,1560,2046].map(f=>f*Math.pow(2,t/12)); let v=0; fs.forEach(f=>v+=Math.sin(2*Math.PI*f*s)); return (v/6*.5+(Math.random()*2-1)*.5)*Math.exp(-s*5)*.6; }),
+  clap:     ()    => genData(.22, (s)=>{ const n=Math.random()*2-1; return n*(Math.exp(-((s-.001)**2)*50000)*1.5+Math.exp(-((s-.006)**2)*50000)*1.2+Math.exp(-s*14)*.6)*.5; }),
+  tom:      (f=80,dc=4,t=0) => genData(.4, (s)=>{ const cf=f*Math.pow(2,t/12)*(1+2*Math.exp(-s*22)); return Math.sin(2*Math.PI*cf*s)*Math.exp(-s*dc)*.8; }),
+  rim:      ()    => genData(.08, (s)=>{ return ((Math.random()*2-1)*.3+Math.sin(2*Math.PI*1500*s)*Math.exp(-s*80)*.7)*Math.exp(-s*55); }),
+  crash:    (t=0) => genData(1.2, (s)=>{ const fs=[400,715,1150,1750,2500,3800,5200].map(f=>f*Math.pow(2,t/12)); let v=0; fs.forEach(f=>v+=Math.sin(2*Math.PI*f*s)); return (v/7*.4+(Math.random()*2-1)*.6)*Math.exp(-s*3.5)*(1-Math.exp(-s*80))*.5; }),
+  cowbell:  (t=0) => genData(.4,  (s)=>{ const f=562*Math.pow(2,t/12); return (Math.sin(2*Math.PI*f*s)+Math.sin(2*Math.PI*f*1.512*s))*.5*Math.exp(-s*6)*.6; }),
+  synthbas: (note=36) => genData(.5, (s)=>{ const f=440*Math.pow(2,(note-69)/12); const ph=2*Math.PI*f*s; return (2*((ph/(2*Math.PI))%1)-1)*Math.exp(-s*6)*(1-Math.exp(-s*200))*.6; }),
+  synthstb: (note=60) => genData(.3, (s)=>{ const f=440*Math.pow(2,(note-69)/12); return (2*((2*Math.PI*f*s/(2*Math.PI))%1)-1)*Math.exp(-s*9)*(1-Math.exp(-s*300))*.6; }),
+  noise:    (dc=8) => genData(.5,  (s)=>{ return (Math.random()*2-1)*Math.exp(-s*dc)*.5; }),
+  perc:     (f=800,dc=15,t=0) => genData(.25,(s)=>{ const cf=f*Math.pow(2,t/12)*Math.pow(2,s*(-3)); return Math.sin(2*Math.PI*cf*s)*Math.exp(-s*dc)*.7; }),
+};
+
+// ═══════════ KIT DEFINITIONS ═══════════
+const KITS = {
+  drums1: {
+    label: '🥁 Drums Kit 1', desc: 'Стандартный набор',
+    pads: [
+      {name:'Kick',     gen:()=>GENS.kick808(0)},
+      {name:'Snare',    gen:()=>GENS.snare808(0)},
+      {name:'HH Cl',    gen:()=>GENS.hhcl(0)},
+      {name:'HH Op',    gen:()=>GENS.hhop(0)},
+      {name:'Clap',     gen:()=>GENS.clap()},
+      {name:'Tom Lo',   gen:()=>GENS.tom(70,4,0)},
+      {name:'Tom Hi',   gen:()=>GENS.tom(130,5,0)},
+      {name:'Rimshot',  gen:()=>GENS.rim()},
+      {name:'Crash',    gen:()=>GENS.crash(0)},
+      {name:'Cowbell',  gen:()=>GENS.cowbell(0)},
+      {name:'Kick 2',   gen:()=>GENS.kick808(-4)},
+      {name:'Snare 2',  gen:()=>GENS.snare808(3)},
+      {name:'Perc Lo',  gen:()=>GENS.perc(300,10,0)},
+      {name:'Perc Mid', gen:()=>GENS.perc(600,18,0)},
+      {name:'Perc Hi',  gen:()=>GENS.perc(1200,25,0)},
+      {name:'Noise',    gen:()=>GENS.noise(12)},
+    ]
+  },
+  k808: {
+    label: '🔊 808 Kit', desc: 'Электронные барабаны 808',
+    pads: [
+      {name:'808 Kick',  gen:()=>GENS.kick808(-5)},
+      {name:'808 Snr',   gen:()=>GENS.snare808(-2)},
+      {name:'808 HHCl',  gen:()=>GENS.hhcl(-2)},
+      {name:'808 HHOp',  gen:()=>GENS.hhop(-2)},
+      {name:'808 Clap',  gen:()=>GENS.clap()},
+      {name:'808 Tom L', gen:()=>GENS.tom(55,3,0)},
+      {name:'808 Tom H', gen:()=>GENS.tom(100,4,0)},
+      {name:'808 Rim',   gen:()=>GENS.rim()},
+      {name:'808 Crash', gen:()=>GENS.crash(-2)},
+      {name:'808 Sub',   gen:()=>GENS.synthbas(24)},
+      {name:'808 Bass',  gen:()=>GENS.synthbas(36)},
+      {name:'808 Bass2', gen:()=>GENS.synthbas(29)},
+      {name:'Cowbell',   gen:()=>GENS.cowbell(3)},
+      {name:'Perc',      gen:()=>GENS.perc(400,18,0)},
+      {name:'Noise S',   gen:()=>GENS.noise(20)},
+      {name:'Noise L',   gen:()=>GENS.noise(4)},
+    ]
+  },
+  synth: {
+    label: '🎹 Synth Hits', desc: 'Синтезаторные удары и стабы',
+    pads: [
+      {name:'Bass C2',  gen:()=>GENS.synthbas(36)},
+      {name:'Bass G2',  gen:()=>GENS.synthbas(43)},
+      {name:'Bass C3',  gen:()=>GENS.synthbas(48)},
+      {name:'Bass G3',  gen:()=>GENS.synthbas(55)},
+      {name:'Stab C4',  gen:()=>GENS.synthstb(60)},
+      {name:'Stab E4',  gen:()=>GENS.synthstb(64)},
+      {name:'Stab G4',  gen:()=>GENS.synthstb(67)},
+      {name:'Stab Bb4', gen:()=>GENS.synthstb(70)},
+      {name:'Lead C5',  gen:()=>GENS.synthstb(72)},
+      {name:'Lead D5',  gen:()=>GENS.synthstb(74)},
+      {name:'Lead E5',  gen:()=>GENS.synthstb(76)},
+      {name:'Lead G5',  gen:()=>GENS.synthstb(79)},
+      {name:'Perc Lo',  gen:()=>GENS.perc(200,12,0)},
+      {name:'Perc Hi',  gen:()=>GENS.perc(1000,20,0)},
+      {name:'Sub Boom', gen:()=>GENS.kick808(-9)},
+      {name:'Noise Snp',gen:()=>GENS.noise(35)},
+    ]
+  },
+  perc: {
+    label: '🎵 Perc & FX', desc: 'Перкуссия и звуковые эффекты',
+    pads: [
+      {name:'Perc 1',  gen:()=>GENS.perc(800,20,0)},
+      {name:'Perc 2',  gen:()=>GENS.perc(600,16,0)},
+      {name:'Perc 3',  gen:()=>GENS.perc(400,12,0)},
+      {name:'Perc 4',  gen:()=>GENS.perc(250,10,0)},
+      {name:'Perc 5',  gen:()=>GENS.perc(1200,24,0)},
+      {name:'Perc 6',  gen:()=>GENS.perc(1600,30,0)},
+      {name:'Perc 7',  gen:()=>GENS.perc(100,8,0)},
+      {name:'Perc 8',  gen:()=>GENS.perc(2000,35,0)},
+      {name:'Tom Lo',  gen:()=>GENS.tom(60,4,0)},
+      {name:'Tom Hi',  gen:()=>GENS.tom(150,6,0)},
+      {name:'Clap',    gen:()=>GENS.clap()},
+      {name:'Rim',     gen:()=>GENS.rim()},
+      {name:'Click',   gen:()=>GENS.perc(3000,80,0)},
+      {name:'Crash',   gen:()=>GENS.crash(0)},
+      {name:'Noise W', gen:()=>GENS.noise(5)},
+      {name:'Noise P', gen:()=>{ const d=GENS.noise(4); let p=0; for(let i=0;i<d.length;i++){d[i]=(d[i]+p)*.5;p=d[i];} return d; }},
+    ]
+  },
+};
+
+// ═══════════ STATE ═══════════
+const BANKS = 4, PADS = 16;
+const BNAMES = ['A','B','C','D'];
+// banks[b][p] = { name, rawData (Float32Array|null), buf (AudioBuffer|null), gen (fn|null), vol, pitch, decay }
+const banks = Array.from({length: BANKS}, () =>
+  Array.from({length: PADS}, (_, i) => ({name: String(i+1), rawData: null, buf: null, gen: null, vol: 100, pitch: 0, decay: 100}))
+);
+// seq[b][p] = bool[16]
+const seqData = Array.from({length: BANKS}, () =>
+  Array.from({length: PADS}, () => new Array(16).fill(false))
+);
+let curBank = 0, selPad = 0;
+
+// ═══════════ KIT LOADING ═══════════
+function loadKit(kitId) {
+  const kit = KITS[kitId]; if (!kit) return;
+  const bk = banks[curBank];
+  kit.pads.forEach((p, i) => {
+    if (i >= PADS) return;
+    bk[i].name = p.name;
+    bk[i].rawData = null; bk[i].buf = null;
+    bk[i].gen = p.gen;
+    bk[i].vol = 100; bk[i].pitch = 0; bk[i].decay = 100;
+  });
+  buildGrid();
+  document.getElementById('kit-sel').value = kitId;
+}
+
+function ensureBuf(b, p) {
+  const pad = banks[b][p];
+  if (pad.buf) return pad.buf;
+  if (pad.rawData) { pad.buf = mkBuf(pad.rawData); return pad.buf; }
+  if (pad.gen) {
+    const data = pad.gen();
+    // data is a Float32Array, convert to AudioBuffer
+    if (data instanceof Float32Array) {
+      pad.rawData = data; pad.buf = mkBuf(data); return pad.buf;
+    }
+  }
+  return null;
+}
+
+// ═══════════ PLAY ═══════════
+function playPad(b, p, vel = 1) {
+  initAC(); if (ac.state === 'suspended') ac.resume();
+  const buf = ensureBuf(b, p); if (!buf) return;
+  const pad = banks[b][p];
+  const src = ac.createBufferSource();
+  src.buffer = buf;
+  src.playbackRate.value = Math.pow(2, pad.pitch / 12);
+  const g = ac.createGain();
+  const vol = (pad.vol / 100) * vel;
+  g.gain.value = vol;
+  if (pad.decay < 100) {
+    const dur = buf.duration * pad.decay / 100;
+    g.gain.setValueAtTime(vol, ac.currentTime);
+    g.gain.linearRampToValueAtTime(0, ac.currentTime + Math.max(.01, dur));
+  }
+  src.connect(g); g.connect(ac.destination); src.start();
+  if (isRec) recEv({b, p, tm: ac.currentTime - recT0});
+}
+
+// ═══════════ GRID ═══════════
+function buildGrid() {
+  const g = document.getElementById('pad-grid'); g.innerHTML = '';
+  banks[curBank].forEach((pad, i) => {
+    const row = Math.floor(i / 4);
+    const el = document.createElement('div');
+    el.className = `pad r${row}${(!pad.buf && !pad.rawData && !pad.gen) ? ' empty' : ''}${i === selPad ? ' sel' : ''}`;
+    el.dataset.p = i;
+    el.innerHTML = `<div class="pad-num">${i+1}</div>
+      <div class="pad-seq-dot" id="seq-dot-${i}"></div>
+      <div class="pad-name">${pad.name}</div>
+      <div class="pad-sub">${pad.gen || pad.buf ? '▶' : 'пусто'}</div>`;
+    g.appendChild(el);
+  });
+  setupPadTouch();
+  updatePadUI();
+  updateSeqDots();
+}
+
+function setupPadTouch() {
+  const g = document.getElementById('pad-grid');
+  const tmap = new Map();
+  const getIdx = (x, y) => {
+    const el = document.elementFromPoint(x, y)?.closest('.pad');
+    return el ? +el.dataset.p : null;
+  };
+  g.addEventListener('touchstart', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      const i = getIdx(t.clientX, t.clientY);
+      if (i !== null) { tmap.set(t.identifier, i); hitPad(i); }
+    }
+  }, {passive: false});
+  g.addEventListener('touchend', e => {
+    for (const t of e.changedTouches) tmap.delete(t.identifier);
+  }, {passive: false});
+  g.addEventListener('touchcancel', e => {
+    for (const t of e.changedTouches) tmap.delete(t.identifier);
+  }, {passive: false});
+}
+
+function hitPad(i) {
+  selPad = i;
+  playPad(curBank, i);
+  const els = document.querySelectorAll('.pad');
+  els.forEach((e, j) => e.classList.toggle('sel', j === i));
+  const el = els[i];
+  if (el) { el.classList.add('hit'); setTimeout(() => el.classList.remove('hit'), 100); }
+  updatePadUI();
+  updateSeqSteps();
+  document.getElementById('seq-pad-lbl').textContent = `Пэд: ${banks[curBank][i].name}`;
+}
+
+function updatePadUI() {
+  const p = banks[curBank][selPad];
+  document.getElementById('pad-name-in').value = p.name;
+  document.getElementById('sl-vol').value = p.vol;   document.getElementById('v-vol').textContent = p.vol+'%';
+  document.getElementById('sl-pitch').value = p.pitch; document.getElementById('v-pitch').textContent = p.pitch;
+  document.getElementById('sl-decay').value = p.decay; document.getElementById('v-decay').textContent = p.decay+'%';
+}
+
+// Pad edit controls
+document.getElementById('pad-name-in').addEventListener('input', e => {
+  banks[curBank][selPad].name = e.target.value;
+  const el = document.querySelectorAll('.pad')[selPad];
+  if (el) el.querySelector('.pad-name').textContent = e.target.value;
+  document.getElementById('seq-pad-lbl').textContent = `Пэд: ${e.target.value}`;
+});
+document.getElementById('sl-vol').addEventListener('input', e => {
+  banks[curBank][selPad].vol = +e.target.value;
+  document.getElementById('v-vol').textContent = e.target.value + '%';
+});
+document.getElementById('sl-pitch').addEventListener('input', e => {
+  banks[curBank][selPad].pitch = +e.target.value;
+  document.getElementById('v-pitch').textContent = e.target.value;
+});
+document.getElementById('sl-decay').addEventListener('input', e => {
+  banks[curBank][selPad].decay = +e.target.value;
+  document.getElementById('v-decay').textContent = e.target.value + '%';
+});
+
+document.getElementById('btn-load-pad').addEventListener('click', () => document.getElementById('file-single').click());
+document.getElementById('file-single').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  initAC();
+  const buf = await ac.decodeAudioData(await f.arrayBuffer());
+  banks[curBank][selPad].buf = buf; banks[curBank][selPad].gen = null; banks[curBank][selPad].rawData = null;
+  banks[curBank][selPad].name = f.name.replace(/\.[^.]+$/, '').slice(0, 14);
+  buildGrid(); e.target.value = '';
+});
+
+// ═══════════ BANKS ═══════════
+document.querySelectorAll('.bank-btn').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.bank-btn').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); curBank = +b.dataset.bank;
+  document.getElementById('bank-lbl').textContent = 'Банк ' + BNAMES[curBank];
+  buildGrid(); stopSeq();
+}));
+
+// ═══════════ SEQUENCER ═══════════
+let seqStep = 0, seqRun = false, seqTmr = null;
+
+function updateSeqDots() {
+  for (let p = 0; p < PADS; p++) {
+    const dot = document.getElementById(`seq-dot-${p}`);
+    if (!dot) continue;
+    const hasSteps = seqData[curBank][p].some(Boolean);
+    dot.classList.toggle('vis', hasSteps);
+    dot.classList.remove('playing');
+  }
+}
+
+function buildSeqSteps() {
+  const c = document.getElementById('seq-steps'); c.innerHTML = '';
+  for (let s = 0; s < 16; s++) {
+    const el = document.createElement('div');
+    el.className = 'step' + (seqData[curBank][selPad][s] ? ' on' : '') + (s === seqStep && seqRun ? ' cur' : '');
+    el.dataset.s = s;
+    el.addEventListener('pointerdown', ev => {
+      ev.preventDefault();
+      seqData[curBank][selPad][s] = !seqData[curBank][selPad][s];
+      el.classList.toggle('on', seqData[curBank][selPad][s]);
+      updateSeqDots();
+    });
+    c.appendChild(el);
+  }
+}
+
+function updateSeqSteps() {
+  const steps = document.querySelectorAll('.step');
+  steps.forEach((el, s) => {
+    el.classList.toggle('on', seqData[curBank][selPad][s]);
+    el.classList.toggle('cur', s === seqStep && seqRun);
+  });
+}
+
+function startSeq() {
+  stopSeq(); seqRun = true; seqStep = 0;
+  document.getElementById('btn-seq-tog').textContent = '⏹ Стоп';
+  const bpm = +document.getElementById('bpm-r').value;
+  const stepMs = 60000 / bpm / 4;
+  const tick = () => {
+    if (!seqRun) return;
+    for (let p = 0; p < PADS; p++) {
+      if (seqData[curBank][p][seqStep]) {
+        playPad(curBank, p);
+        const dot = document.getElementById(`seq-dot-${p}`);
+        if (dot) { dot.classList.add('vis', 'playing'); setTimeout(() => dot.classList.remove('playing'), 120); }
+      }
+    }
+    updateSeqSteps();
+    seqStep = (seqStep + 1) % 16;
+    seqTmr = setTimeout(tick, stepMs);
+  };
+  tick();
+}
+function stopSeq() {
+  seqRun = false; clearTimeout(seqTmr); seqTmr = null;
+  document.getElementById('btn-seq-tog').textContent = '▶ Старт';
+  updateSeqSteps();
+}
+
+document.getElementById('btn-seq-tog').addEventListener('click', () => seqRun ? stopSeq() : startSeq());
+document.getElementById('btn-seq-clr').addEventListener('click', () => {
+  seqData[curBank][selPad].fill(false); buildSeqSteps(); updateSeqDots();
+});
+
+// ═══════════ LOOP RECORDER ═══════════
+let isRec = false, recT0 = 0, recEvs = [], loopDur = 0, loopTmr = null;
+function recEv(ev) { recEvs.push(ev); }
+function startRec() {
+  initAC(); if (ac.state === 'suspended') ac.resume();
+  stopLoop(); recEvs = []; isRec = true; recT0 = ac.currentTime;
+  document.getElementById('sbtn-rec').classList.add('rec-on');
+}
+function stopRec() {
+  if (!isRec) return; isRec = false; loopDur = ac.currentTime - recT0;
+  document.getElementById('sbtn-rec').classList.remove('rec-on');
+  if (recEvs.length) startLoop();
+}
+function startLoop() {
+  stopLoop(); if (!recEvs.length || !loopDur) return;
+  document.getElementById('sbtn-play').classList.add('on');
+  document.getElementById('sbtn-play').innerHTML = '⏹<br>Stop';
+  const go = () => {
+    recEvs.forEach(ev => setTimeout(() => playPad(ev.b, ev.p), ev.tm * 1000));
+    loopTmr = setTimeout(go, loopDur * 1000);
+  }; go();
+}
+function stopLoop() {
+  clearTimeout(loopTmr); loopTmr = null;
+  document.getElementById('sbtn-play').classList.remove('on');
+  document.getElementById('sbtn-play').innerHTML = '▶<br>Play';
+}
+
+document.getElementById('sbtn-rec').addEventListener('click', () => isRec ? stopRec() : startRec());
+document.getElementById('sbtn-play').addEventListener('click', () => loopTmr ? stopLoop() : startLoop());
+document.getElementById('sbtn-clr').addEventListener('click', () => { stopLoop(); recEvs = []; loopDur = 0; });
+document.getElementById('sbtn-seq').addEventListener('click', () => {
+  document.querySelectorAll('.btab').forEach(x => x.classList.remove('on'));
+  document.querySelectorAll('.bpane').forEach(x => x.classList.remove('on'));
+  document.querySelector('[data-pane="seq"]').classList.add('on');
+  document.getElementById('pane-seq').classList.add('on');
+  buildSeqSteps();
+});
+
+// ═══════════ TABS ═══════════
+document.querySelectorAll('.btab').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.btab').forEach(x => x.classList.remove('on'));
+  document.querySelectorAll('.bpane').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); document.getElementById('pane-'+b.dataset.pane).classList.add('on');
+  if (b.dataset.pane === 'seq') buildSeqSteps();
+}));
+
+// ═══════════ LOAD MODAL ═══════════
+function buildModalKits() {
+  const c = document.getElementById('kit-options'); c.innerHTML = '';
+  const sel = document.getElementById('kit-sel'); sel.innerHTML = '';
+  Object.entries(KITS).forEach(([id, kit]) => {
+    // Dropdown option
+    const opt = document.createElement('option'); opt.value = id; opt.textContent = kit.label; sel.appendChild(opt);
+    // Modal card
+    const el = document.createElement('div'); el.className = 'kit-opt'; el.dataset.kit = id;
+    el.innerHTML = `<span class="kit-icon">${kit.label.split(' ')[0]}</span>
+      <div class="kit-info"><h4>${kit.label.slice(2)}</h4><p>${kit.desc}</p></div>`;
+    el.addEventListener('click', () => { loadKit(id); closeModal(); });
+    c.appendChild(el);
+  });
+}
+function openModal() { document.getElementById('modal').classList.add('open'); }
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+document.getElementById('btn-load-kit').addEventListener('click', openModal);
+document.getElementById('modal-close').addEventListener('click', closeModal);
+document.getElementById('modal').addEventListener('click', e => { if (e.target === document.getElementById('modal')) closeModal(); });
+document.getElementById('kit-sel').addEventListener('change', e => loadKit(e.target.value));
+
+// File loading
+document.getElementById('drop-zone').addEventListener('click', () => document.getElementById('file-multi').click());
+document.getElementById('drop-zone').addEventListener('dragover', e => { e.preventDefault(); e.currentTarget.classList.add('drag'); });
+document.getElementById('drop-zone').addEventListener('dragleave', e => e.currentTarget.classList.remove('drag'));
+document.getElementById('drop-zone').addEventListener('drop', e => {
+  e.preventDefault(); e.currentTarget.classList.remove('drag');
+  loadFiles(e.dataTransfer.files); closeModal();
+});
+document.getElementById('file-multi').addEventListener('change', e => {
+  loadFiles(e.target.files); closeModal(); e.target.value = '';
+});
+async function loadFiles(files) {
+  initAC();
+  const arr = Array.from(files).filter(f => f.type.startsWith('audio/')).slice(0, PADS);
+  for (let i = 0; i < arr.length; i++) {
+    const f = arr[i];
+    const buf = await ac.decodeAudioData(await f.arrayBuffer());
+    banks[curBank][i] = { name: f.name.replace(/\.[^.]+$/, '').slice(0, 14), buf, rawData: null, gen: null, vol: 100, pitch: 0, decay: 100 };
+  }
+  buildGrid();
+}
+
+// ═══════════ BPM ═══════════
+document.getElementById('bpm-r').addEventListener('input', e => {
+  document.getElementById('bpm-val').textContent = e.target.value;
+  if (seqRun) { stopSeq(); startSeq(); }
+});
+
+// ═══════════ PC KEYBOARD ═══════════
+const KEYS = ['1','2','3','4','q','w','e','r','a','s','d','f','z','x','c','v'];
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  const i = KEYS.indexOf(e.key);
+  if (i >= 0) hitPad(i);
+});
+
+// ═══════════ INIT ═══════════
+buildModalKits();
+loadKit('drums1');
+buildSeqSteps();
+</script>
+</body>
+</html>

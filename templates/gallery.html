@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
+    <title>Галерея</title>
+    <style>
+        :root {
+            --bg: #1e1e2e; --bg-alt: #181825; --bg-darker: #11111b;
+            --surface0: #313244; --surface1: #45475a; --surface2: #585b70;
+            --overlay0: #6c7086; --subtext0: #a6adc8; --text: #e9ecf6;
+            --mauve: #cba6f7; --blue: #89b4fa; --red: #f38ba8;
+            --green: #a6e3a1; --peach: #fab387; --sky: #89dceb;
+        }
+        body.light {
+            --bg: #fdfdfd; --bg-alt: #f6f6f6; --bg-darker: #dce0e8;
+            --surface0: #ccd0da; --surface1: #bcc0cc; --surface2: #acb0be;
+            --overlay0: #101011; --subtext0: #3c3c3c; --text: #1d1e26;
+            --mauve: #8839ef; --blue: #1e66f5; --red: #d20f39;
+            --green: #40a02b; --peach: #fe640b; --sky: #04a5e5;
+        }
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+               background: var(--bg); color: var(--text); height: 100vh; height: 100dvh; overflow: hidden;
+               display: flex; flex-direction: column;
+               background-image: url(/gpng?svg=pattern-1); }
+        body.light { background-image: none; }
+
+        /* ── Topbar ── */
+        #topbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 0 16px; display: flex; align-items: center; gap: 12px;
+            flex-shrink: 0; box-shadow: 0 2px 12px rgba(0,0,0,0.4); height: 44px;
+        }
+        #topbar a { color: rgba(255,255,255,0.85); text-decoration: none; font-size: 14px; }
+        #topbar a:hover { color: #fff; }
+        #topbar-div { color: rgba(255,255,255,0.4); }
+        #app-title { font-weight: 600; color: white; font-size: 15px; }
+        #topbar-spacer { flex: 1; }
+        .tb-btn {
+            background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.35);
+            color: white; padding: 5px 10px; border-radius: 8px; cursor: pointer;
+            font-size: 13px; white-space: nowrap; transition: background 0.15s;
+        }
+        .tb-btn:hover { background: rgba(255,255,255,0.3); }
+        #edit-label { display: flex; align-items: center; gap: 6px; cursor: pointer;
+                      color: rgba(255,255,255,0.85); font-size: 13px; white-space: nowrap; }
+        #edit-label input { cursor: pointer; accent-color: var(--mauve); }
+
+        /* ── Layout ── */
+        #layout { flex: 1; display: flex; overflow: hidden; }
+
+        /* ── Sidebar ── */
+        #sidebar {
+            width: 280px; background: var(--bg-alt); border-right: 1px solid var(--surface0);
+            display: flex; flex-direction: column; flex-shrink: 0;
+            transition: width 0.25s ease; overflow: hidden;
+        }
+        #sidebar.collapsed { width: 0; }
+        #sidebar-header {
+            padding: 10px 12px; display: flex; align-items: center;
+            justify-content: space-between; border-bottom: 1px solid var(--surface0); flex-shrink: 0;
+        }
+        #sidebar-header span { font-size: 11px; font-weight: 600; color: var(--subtext0);
+                               letter-spacing: 0.5px; text-transform: uppercase; white-space: nowrap; }
+        #toggle-sb {
+            background: none; border: none; color: var(--surface2); cursor: pointer;
+            font-size: 16px; padding: 3px 5px; border-radius: 4px;
+        }
+        #toggle-sb:hover { background: var(--surface0); color: var(--text); }
+        #sb-toggle-float {
+            display: none; position: fixed; left: 8px; top: 52px; z-index: 100;
+            background: var(--surface0); border: 1px solid var(--surface1); color: var(--text);
+            border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 16px;
+        }
+        #sb-toggle-float.visible { display: block; }
+        #tree-search {
+            border: none; border-bottom: 1px solid var(--surface0); background: var(--bg);
+            color: var(--text); padding: 7px 12px; font-size: 13px; outline: none; flex-shrink: 0;
+        }
+        #tree-search::placeholder { color: var(--surface2); }
+        #tree { overflow-y: auto; flex: 1; padding: 4px 0; }
+
+        /* ── Tree items ── */
+        .tree-row {
+            display: flex; align-items: center; gap: 5px; padding: 6px 12px;
+            cursor: pointer; font-size: 13px; color: var(--subtext0);
+            transition: background 0.1s; user-select: none; white-space: nowrap;
+        }
+        .tree-row:hover { background: var(--surface0); color: var(--text); }
+        .tree-row.active { background: var(--surface1); color: var(--mauve); }
+        .tree-arrow {
+            font-size: 9px; color: var(--surface2); width: 10px; flex-shrink: 0;
+            display: inline-block; transition: transform 0.15s;
+        }
+        .tree-row.open .tree-arrow { transform: rotate(90deg); }
+        .tree-icon { flex-shrink: 0; }
+        .tree-name { overflow: hidden; text-overflow: ellipsis; flex: 1; }
+        .tree-children { border-left: 1px solid var(--surface0); }
+        .tree-children.hidden { display: none; }
+        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--surface1); border-radius: 3px; }
+
+        /* ── Content ── */
+        #content {
+            flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0;
+        }
+        #breadcrumb {
+            padding: 8px 16px; font-size: 12px; color: var(--overlay0);
+            border-bottom: 1px solid var(--surface0); background: var(--bg-alt); flex-shrink: 0;
+            display: none; align-items: center; gap: 6px;
+        }
+        #photo-count { margin-left: auto; color: var(--subtext0); }
+        #photo-scroll { flex: 1; overflow-y: auto; }
+        #empty-state {
+            flex: 1; display: flex; flex-direction: column; align-items: center;
+            justify-content: center; color: var(--overlay0); gap: 12px;
+        }
+        #empty-state .es-icon { font-size: 52px; }
+        #empty-state p { font-size: 15px; }
+        #loading {
+            display: none; align-items: center; justify-content: center;
+            padding: 40px; color: var(--overlay0); gap: 10px; font-size: 14px;
+        }
+        .spinner { width: 20px; height: 20px; border: 2px solid var(--surface1);
+                   border-top-color: var(--mauve); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Photo grid ── */
+        #photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 8px; padding: 12px;
+        }
+        .photo-card {
+            aspect-ratio: 1; overflow: hidden; border-radius: 6px; cursor: pointer;
+            background: var(--surface0); position: relative;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .photo-card:hover { transform: scale(1.03); box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+        .photo-card img {
+            width: 100%; height: 100%; object-fit: cover;
+            border-radius: 6px; transition: opacity 0.3s; opacity: 0;
+        }
+        .photo-card img.loaded { opacity: 1; }
+        .photo-card.deleted img { opacity: 0.25; filter: grayscale(100%); }
+        .del-btn {
+            display: none; position: absolute; top: 5px; right: 5px; z-index: 2;
+            background: rgba(243,139,168,0.85); border: none; color: white;
+            width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+            font-size: 16px; line-height: 1; align-items: center; justify-content: center;
+            transition: background 0.15s;
+        }
+        .del-btn:hover { background: var(--red); }
+        #content.edit-mode .photo-card:hover .del-btn { display: flex; }
+        .photo-card.deleted .del-btn { display: flex; background: rgba(166,227,161,0.7); }
+        .photo-card.deleted .del-btn:hover { background: var(--green); }
+        .deleted-label {
+            display: none; position: absolute; inset: 0; align-items: center;
+            justify-content: center; font-size: 11px; color: white;
+            text-align: center; padding: 8px; text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+        }
+        .photo-card.deleted .deleted-label { display: flex; }
+
+        /* ── Video card ── */
+        .play-overlay {
+            position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+            pointer-events: none;
+        }
+        .play-overlay::after {
+            content: '▶'; font-size: 36px; color: rgba(255,255,255,0.85);
+            text-shadow: 0 2px 12px rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.35); border-radius: 50%;
+            width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;
+            padding-left: 4px;
+        }
+        .video-duration {
+            position: absolute; bottom: 6px; right: 8px;
+            font-size: 11px; color: rgba(255,255,255,0.9);
+            background: rgba(0,0,0,0.55); padding: 1px 5px; border-radius: 3px;
+            pointer-events: none;
+        }
+
+        @media (max-width: 768px) {
+            #photo-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 5px; padding: 8px; }
+        }
+        @media (max-width: 540px) {
+            #theme-btn  { padding: 5px 7px; }
+            #app-title  { font-size: 13px; }
+        }
+
+        /* ── Lightbox ── */
+        #lightbox {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.52);
+            backdrop-filter: blur(5px); z-index: 1000;
+            align-items: center; justify-content: center; cursor: pointer;
+            overflow: hidden;
+        }
+        #lightbox.show-controls { cursor: default; }
+        #lb-img {
+            max-width: 96vw; max-height: 94vh; object-fit: contain;
+            border-radius: 4px; box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+            transition: opacity 0.2s; cursor: default;
+        }
+        #lb-spinner {
+            position: absolute; width: 36px; height: 36px;
+            border: 3px solid rgba(255,255,255,0.2); border-top-color: white;
+            border-radius: 50%; animation: spin 0.8s linear infinite; display: none;
+        }
+        .lb-ctrl {
+            position: absolute; opacity: 0; pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        #lightbox.show-controls .lb-ctrl { opacity: 1; pointer-events: all; }
+        .lb-btn {
+            width: 54px; height: 54px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.25);
+            background: rgba(0,0,0,0.45); color: rgba(255,255,255,0.9); cursor: pointer;
+            font-size: 23px; font-weight: bold; display: flex; align-items: center; justify-content: center;
+            transition: background 0.15s, transform 0.15s; backdrop-filter: blur(6px);
+        }
+        .lb-btn:hover { background: rgba(0,0,0,0.7); transform: scale(1.1); }
+        .lb-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+        #lb-close    { top: 12px; right: 12px; }
+        #lb-prev     { left: 8px; top: 50%; transform: translateY(-50%); }
+        #lb-next     { right: 8px; top: 50%; transform: translateY(-50%); }
+        #lb-prev:hover { transform: translateY(-50%) scale(1.1); }
+        #lb-next:hover { transform: translateY(-50%) scale(1.1); }
+        #lb-full     { bottom: 12px; right: 12px;  font-size: 15px; font-weight: 700; }
+        #lb-delete   { bottom: 12px; right: 76px;  font-size: 22px; }
+        #lb-download { bottom: 12px; right: 140px; font-size: 22px; }
+        #lb-share    { bottom: 12px; right: 204px; font-size: 22px; }
+        #lb-delete   { display: none; }
+        #lightbox.edit-mode  #lb-delete { display: flex; }
+        #lightbox.is-video   #lb-full   { display: none; }
+
+        /* ── Share toast ── */
+        #share-toast {
+            position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(10px);
+            background: var(--green); color: #1e1e2e; padding: 9px 20px; border-radius: 20px;
+            font-size: 13px; font-weight: 600; opacity: 0; pointer-events: none;
+            transition: opacity 0.25s, transform 0.25s; z-index: 2000; white-space: nowrap;
+        }
+        #share-toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        /* ── Video player in lightbox ── */
+        #lb-video {
+            display: none; max-width: 96vw; max-height: 94vh;
+            border-radius: 4px; background: #000;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+        }
+        #lb-counter  {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            color: rgba(255,255,255,0.6); font-size: 13px; opacity: 0;
+            transition: opacity 0.3s; pointer-events: none; white-space: nowrap;
+        }
+        #lightbox.show-controls #lb-counter { opacity: 1; }
+        @media (max-width: 768px) {
+            .lb-btn { width: 44px; height: 44px; font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="topbar">
+        <a href="/">← Меню</a>
+        <span id="topbar-div">/</span>
+        <span id="app-title">📷 Галерея</span>
+        <span id="topbar-spacer"></span>
+        <label id="edit-label">
+            <input type="checkbox" id="edit-cb" onchange="toggleEditMode(this.checked)"> Редактирование
+        </label>
+        <button class="tb-btn" onclick="toggleTheme()" id="theme-btn">☀️</button>
+    </div>
+
+    <button id="sb-toggle-float" onclick="toggleSidebar()" title="Показать альбомы">→</button>
+
+    <div id="layout">
+        <aside id="sidebar">
+            <div id="sidebar-header">
+                <span>📁 Альбомы</span>
+                <button id="toggle-sb" onclick="toggleSidebar()" title="Скрыть">←</button>
+            </div>
+            <input id="tree-search" type="text" placeholder="Поиск..." oninput="filterTree(this.value)">
+            <div id="tree"></div>
+        </aside>
+
+        <div id="content">
+            <div id="breadcrumb">
+                <span id="bc-path"></span>
+                <span id="photo-count"></span>
+            </div>
+            <div id="photo-scroll" onscroll="checkScroll()">
+                <div id="empty-state">
+                    <span class="es-icon">📷</span>
+                    <p>Выберите альбом</p>
+                </div>
+                <div id="loading"><div class="spinner"></div> Загрузка…</div>
+                <div id="photo-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lightbox -->
+    <div id="lightbox" onclick="onLbClick(event)">
+        <img id="lb-img" onclick="event.stopPropagation()">
+        <video id="lb-video" controls preload="none" playsinline
+               onclick="event.stopPropagation()"></video>
+        <div id="lb-spinner"></div>
+        <button class="lb-btn lb-ctrl" id="lb-close"    onclick="closeLightbox()"  title="Закрыть (Esc)">×</button>
+        <button class="lb-btn lb-ctrl" id="lb-prev"     onclick="navigateLb(-1)"   title="Предыдущее">‹</button>
+        <button class="lb-btn lb-ctrl" id="lb-next"     onclick="navigateLb(1)"    title="Следующее">›</button>
+        <button class="lb-btn lb-ctrl" id="lb-download" onclick="downloadCurrent()" title="Скачать">↓</button>
+        <button class="lb-btn lb-ctrl" id="lb-delete"   onclick="deleteCurrent()"  title="Удалить / восстановить">🗑</button>
+        <button class="lb-btn lb-ctrl" id="lb-full"     onclick="loadOriginal()"   title="Показать оригинал (↑)">ORIG</button>
+        <button class="lb-btn lb-ctrl" id="lb-share"    onclick="shareCurrent()"   title="Поделиться ссылкой">🔗</button>
+        <div id="lb-counter"></div>
+    </div>
+    <div id="share-toast">✓ Ссылка скопирована</div>
+
+    <script>
+    const alldir = {{ dirlist|tojson }};
+    const LS = 'gallery:';
+
+    // ── State ──────────────────────────────────────────────────────────────────
+    let currentDir    = null;
+    let currentPhotos = [];   // full urla paths
+    let photosPage    = 0;
+    const PAGESIZE    = 50;
+    let shouldLoad    = false;
+    let isLoading     = false;
+    let lbIndex       = -1;
+    let lbHideTimer   = null;
+    let lbZoomScale   = 1;
+    let editMode      = getCookie('mode') === '1';
+    let sbCollapsed   = window.innerWidth < 600;
+
+    // ── Boot ───────────────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+        applyTheme(localStorage.getItem(LS + 'theme') || 'dark');
+        document.getElementById('edit-cb').checked = editMode;
+        applyEditMode();
+        if (sbCollapsed) {
+            document.getElementById('sidebar').classList.add('collapsed');
+            document.getElementById('toggle-sb').textContent = '→';
+            document.getElementById('sb-toggle-float').classList.add('visible');
+        }
+        buildTree(alldir);
+        const saved = localStorage.getItem(LS + 'dir');
+        if (saved) loadPhotos(saved);
+    });
+
+    // ── Theme ──────────────────────────────────────────────────────────────────
+    function applyTheme(t) {
+        document.body.classList.toggle('light', t === 'light');
+        document.getElementById('theme-btn').textContent = t === 'light' ? '🌙' : '☀️';
+        localStorage.setItem(LS + 'theme', t);
+    }
+    function toggleTheme() {
+        applyTheme(document.body.classList.contains('light') ? 'dark' : 'light');
+    }
+
+    // ── Edit mode ──────────────────────────────────────────────────────────────
+    function applyEditMode() {
+        document.getElementById('content').classList.toggle('edit-mode', editMode);
+        document.getElementById('lightbox').classList.toggle('edit-mode', editMode);
+    }
+    function toggleEditMode(checked) {
+        editMode = checked;
+        setCookie('mode', editMode ? '1' : '0', 7);
+        applyEditMode();
+    }
+
+    // ── Sidebar ────────────────────────────────────────────────────────────────
+    function toggleSidebar() {
+        sbCollapsed = !sbCollapsed;
+        document.getElementById('sidebar').classList.toggle('collapsed', sbCollapsed);
+        document.getElementById('toggle-sb').textContent = sbCollapsed ? '→' : '←';
+        document.getElementById('sb-toggle-float').classList.toggle('visible', sbCollapsed);
+    }
+
+    // ── Tree ───────────────────────────────────────────────────────────────────
+    function buildTree(data) {
+        const container = document.getElementById('tree');
+        container.innerHTML = '';
+        for (const [name, node] of Object.entries(data).sort())
+            container.appendChild(makeNode(name, node, 0));
+    }
+
+    function makeNode(name, node, depth) {
+        const hasChildren = Object.keys(node.sdir || {}).length > 0;
+        const wrap = document.createElement('div');
+
+        const row = document.createElement('div');
+        row.className = 'tree-row';
+        row.dataset.dir = node.dir;
+        row.dataset.name = name.toLowerCase();
+
+        const indent = document.createElement('span');
+        indent.style.cssText = `width:${depth*14}px;display:inline-block;flex-shrink:0`;
+        row.appendChild(indent);
+
+        if (hasChildren) {
+            const arrow = document.createElement('span');
+            arrow.className = 'tree-arrow';
+            arrow.textContent = '▶';
+            row.appendChild(arrow);
+        } else {
+            const icon = document.createElement('span');
+            icon.className = 'tree-icon';
+            icon.textContent = '📁';
+            row.appendChild(icon);
+        }
+
+        const nameEl = document.createElement('span');
+        nameEl.className = 'tree-name';
+        nameEl.textContent = name;
+        row.appendChild(nameEl);
+
+        wrap.appendChild(row);
+
+        if (hasChildren) {
+            const childWrap = document.createElement('div');
+            childWrap.className = 'tree-children hidden';
+            for (const [cn, ch] of Object.entries(node.sdir).sort())
+                childWrap.appendChild(makeNode(cn, ch, depth + 1));
+            wrap.appendChild(childWrap);
+
+            row.onclick = () => {
+                row.classList.toggle('open');
+                childWrap.classList.toggle('hidden');
+            };
+        } else {
+            row.onclick = () => {
+                document.querySelectorAll('.tree-row.active').forEach(r => r.classList.remove('active'));
+                row.classList.add('active');
+                loadPhotos(node.dir);
+            };
+        }
+        return wrap;
+    }
+
+    function filterTree(q) {
+        q = q.toLowerCase().trim();
+        if (!q) {
+            document.querySelectorAll('.tree-row').forEach(r => {
+                r.closest('div').style.display = '';
+            });
+            return;
+        }
+        document.querySelectorAll('.tree-row').forEach(row => {
+            const match = (row.dataset.dir || '').toLowerCase().includes(q)
+                       || (row.dataset.name || '').includes(q);
+            row.closest('div').style.display = match ? '' : 'none';
+            if (match) {
+                // expand parents
+                let p = row.parentElement;
+                while (p && p.id !== 'tree') {
+                    if (p.classList.contains('tree-children')) p.classList.remove('hidden');
+                    p = p.parentElement;
+                }
+            }
+        });
+    }
+
+    // ── Load photos ────────────────────────────────────────────────────────────
+    async function loadPhotos(dir) {
+        currentDir = dir;
+        currentPhotos = [];
+        photosPage = 0;
+        shouldLoad = false;
+        isLoading = false;
+
+        localStorage.setItem(LS + 'dir', dir);
+
+        document.getElementById('empty-state').style.display = 'none';
+        document.getElementById('photo-grid').innerHTML = '';
+        document.getElementById('loading').style.display = 'flex';
+        document.getElementById('breadcrumb').style.display = 'flex';
+        document.getElementById('bc-path').textContent = dir;
+        document.getElementById('photo-count').textContent = '';
+
+        try {
+            const resp = await fetch('/gallery/photos?urla=' + encodeURIComponent(dir));
+            const data = await resp.json();
+            currentPhotos = data.imgs;
+        } catch (e) {
+            document.getElementById('loading').style.display = 'none';
+            return;
+        }
+
+        document.getElementById('loading').style.display = 'none';
+
+        if (!currentPhotos.length) {
+            document.getElementById('empty-state').style.display = 'flex';
+            document.getElementById('empty-state').querySelector('p').textContent = 'Нет фотографий';
+            return;
+        }
+
+        document.getElementById('photo-count').textContent = currentPhotos.length + ' фото';
+        shouldLoad = true;
+        renderPhotoPage();
+    }
+
+    // ── Render grid page ───────────────────────────────────────────────────────
+    function renderPhotoPage() {
+        if (!shouldLoad || isLoading) return;
+        const start = photosPage * PAGESIZE;
+        const slice = currentPhotos.slice(start, start + PAGESIZE);
+        if (!slice.length) { shouldLoad = false; return; }
+        isLoading = true;
+        const grid = document.getElementById('photo-grid');
+        slice.forEach((urla, i) => {
+            const idx = start + i;
+            const card = document.createElement('div');
+            card.className = 'photo-card';
+            card.dataset.urla = urla;
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'del-btn';
+            delBtn.textContent = '×';
+            delBtn.title = 'Удалить / восстановить';
+            delBtn.onclick = e => { e.stopPropagation(); toggleDelete(urla, card); };
+            card.appendChild(delBtn);
+
+            const label = document.createElement('div');
+            label.className = 'deleted-label';
+            label.textContent = 'Удалено. Нажмите ×, чтобы вернуть';
+            card.appendChild(label);
+
+            if (isVideo(urla)) {
+                const thumb = document.createElement('img');
+                thumb.alt = urla.split('/').pop();
+                thumb.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:6px;opacity:0;transition:opacity .3s';
+
+                const playDiv = document.createElement('div');
+                playDiv.className = 'play-overlay';
+
+                const durSpan = document.createElement('span');
+                durSpan.className = 'video-duration';
+
+                card.appendChild(thumb);
+                card.appendChild(playDiv);
+                card.appendChild(durSpan);
+
+                // generate thumbnail lazily when card enters viewport
+                const thumbObserver = new IntersectionObserver(entries => {
+                    if (entries[0].isIntersecting) {
+                        makeVideoThumb(videoSrc(urla), thumb, durSpan);
+                        thumbObserver.disconnect();
+                    }
+                }, { rootMargin: '200px' });
+                thumbObserver.observe(card);
+            } else {
+                const img = document.createElement('img');
+                img.alt = urla.split('/').pop();
+                img.dataset.src = makeUrl(urla, 'yes');
+                img.onload = () => img.classList.add('loaded');
+                imageObserver.observe(img);
+                card.appendChild(img);
+            }
+
+            card.onclick = () => openLightbox(idx);
+            grid.appendChild(card);
+        });
+        photosPage++;
+        isLoading = false;
+        if (slice.length < PAGESIZE) shouldLoad = false;
+    }
+
+    function checkScroll() {
+        const el = document.getElementById('photo-scroll');
+        if (shouldLoad && el.scrollTop + el.clientHeight >= el.scrollHeight - 300)
+            renderPhotoPage();
+    }
+
+    // ── Lazy loading ───────────────────────────────────────────────────────────
+    const imageObserver = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+            if (e.isIntersecting) {
+                const img = e.target;
+                if (img.dataset.src) { img.src = img.dataset.src; delete img.dataset.src; }
+                imageObserver.unobserve(img);
+            }
+        });
+    }, { rootMargin: '100px' });
+
+    // ── Lightbox ───────────────────────────────────────────────────────────────
+    function openLightbox(idx) {
+        lbIndex = idx;
+        document.getElementById('lightbox').style.display = 'flex';
+        loadLbImage(idx);
+        showLbControls();
+    }
+    function closeLightbox() {
+        const vid = document.getElementById('lb-video');
+        vid.pause(); vid.src = '';
+        document.getElementById('lightbox').style.display = 'none';
+        clearTimeout(lbHideTimer);
+        lbIndex = -1;
+        lbZoomReset(false);
+    }
+    function onLbClick(e) {
+        if (e.target === document.getElementById('lightbox') && lbZoomScale <= 1) closeLightbox();
+        else showLbControls();
+    }
+    function loadLbImage(idx) {
+        lbZoomReset(false);
+        lbIndex = idx;
+        const urla = currentPhotos[idx];
+        const img   = document.getElementById('lb-img');
+        const vid   = document.getElementById('lb-video');
+        const sp    = document.getElementById('lb-spinner');
+        const lb    = document.getElementById('lightbox');
+
+        // stop previous video
+        vid.pause(); vid.src = '';
+
+        lb.classList.toggle('is-video', isVideo(urla));
+
+        if (isVideo(urla)) {
+            img.style.display = 'none';
+            vid.style.display = 'block';
+            sp.style.display = 'none';
+            vid.src = videoSrc(urla);
+            vid.load();
+        } else {
+            vid.style.display = 'none';
+            img.style.display = '';
+            img.style.opacity = '0';
+            sp.style.display = 'block';
+            img.onload = () => { img.style.opacity = '1'; sp.style.display = 'none'; };
+            img.src = makeUrl(urla, 'no');
+        }
+
+        document.getElementById('lb-counter').textContent = `${idx + 1} / ${currentPhotos.length}`;
+        document.getElementById('lb-prev').disabled = idx === 0;
+        document.getElementById('lb-next').disabled = idx === currentPhotos.length - 1;
+        // плавный скролл грида к открытой карточке
+        const card = document.querySelector(`.photo-card[data-urla="${CSS.escape(urla)}"]`);
+        if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    function navigateLb(d) {
+        const n = lbIndex + d;
+        if (n >= 0 && n < currentPhotos.length) { loadLbImage(n); showLbControls(); }
+    }
+    function showLbControls() {
+        document.getElementById('lightbox').classList.add('show-controls');
+        clearTimeout(lbHideTimer);
+        lbHideTimer = setTimeout(() =>
+            document.getElementById('lightbox').classList.remove('show-controls'), 2500);
+    }
+    async function shareCurrent() {
+        if (lbIndex < 0) return;
+        const urla = currentPhotos[lbIndex];
+        try {
+            const resp = await fetch('/gallery/share?' + new URLSearchParams({ urla }));
+            const { url } = await resp.json();
+            const full = location.origin + url;
+            await navigator.clipboard.writeText(full);
+            showToast('✓ Ссылка скопирована');
+        } catch (e) {
+            showToast('✕ Ошибка: ' + e.message);
+        }
+        showLbControls();
+    }
+
+    let toastTimer = null;
+    function showToast(msg) {
+        const el = document.getElementById('share-toast');
+        el.textContent = msg;
+        el.classList.add('visible');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => el.classList.remove('visible'), 2500);
+    }
+
+    function loadOriginal() {
+        const img = document.getElementById('lb-img');
+        img.src = makeUrl(currentPhotos[lbIndex], 'orig');
+        showLbControls();
+    }
+    function downloadCurrent() {
+        const urla = currentPhotos[lbIndex];
+        const a = document.createElement('a');
+        a.download = urla.split('/').pop();
+        if (isVideo(urla)) {
+            // прямая ссылка — браузер качает сам, не грузит в память
+            a.href = videoSrc(urla);
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        } else {
+            const url = makeUrl(urla, 'orig');
+            fetch(url).then(r => r.blob()).then(blob => {
+                a.href = URL.createObjectURL(blob);
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                URL.revokeObjectURL(a.href);
+            });
+        }
+        showLbControls();
+    }
+    function deleteCurrent() {
+        if (lbIndex < 0) return;
+        const urla = currentPhotos[lbIndex];
+        const card = document.querySelector(`.photo-card[data-urla="${CSS.escape(urla)}"]`);
+        if (card) toggleDelete(urla, card);
+        navigateLb(1);   // перейти к следующей фотке
+        showLbControls();
+    }
+
+    // ── Delete ─────────────────────────────────────────────────────────────────
+    async function toggleDelete(urla, card) {
+        card.classList.toggle('deleted');
+        await fetch('/list?' + new URLSearchParams({ urldel: urla }));
+    }
+
+    // ── Video helpers ──────────────────────────────────────────────────────────
+    const isVideo = urla => /\.(mp4|mov)$/i.test(urla);
+    const videoSrc = urla => '/gallery/video?' + new URLSearchParams({ urla });
+
+    function fmtDuration(sec) {
+        if (!sec || !isFinite(sec)) return '';
+        const m = Math.floor(sec / 60), s = Math.floor(sec % 60);
+        return m + ':' + String(s).padStart(2, '0');
+    }
+
+    function makeVideoThumb(src, imgEl, durEl) {
+        const v = document.createElement('video');
+        v.muted = true; v.playsInline = true; v.preload = 'metadata';
+        v.onloadedmetadata = () => {
+            if (durEl) durEl.textContent = fmtDuration(v.duration);
+            v.currentTime = Math.min(1, v.duration * 0.05);
+        };
+        v.onseeked = () => {
+            const size = 512;
+            const c = document.createElement('canvas');
+            c.width = c.height = size;
+            const ctx = c.getContext('2d');
+            ctx.fillStyle = '#111'; ctx.fillRect(0, 0, size, size);
+            const ar = v.videoWidth / v.videoHeight;
+            const [dw, dh] = ar >= 1 ? [size, size / ar] : [size * ar, size];
+            ctx.drawImage(v, (size - dw) / 2, (size - dh) / 2, dw, dh);
+            imgEl.src = c.toDataURL('image/jpeg', 0.75);
+            imgEl.onload = () => imgEl.classList.add('loaded');
+            v.src = '';
+        };
+        v.onerror = () => { imgEl.classList.add('loaded'); };
+        v.src = src;
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+    function makeUrl(urla, prev) {
+        const photo = urla.split('/').pop();
+        return '/list?' + new URLSearchParams({ urla, photo, prev });
+    }
+    function getCookie(name) {
+        return document.cookie.split(';').map(c => c.trim())
+            .find(c => c.startsWith(name + '='))?.split('=')[1] ?? null;
+    }
+    function setCookie(name, value, days) {
+        const d = new Date(); d.setTime(d.getTime() + days*86400000);
+        document.cookie = `${name}=${value};expires=${d.toUTCString()};path=/`;
+    }
+
+    // ── Keyboard ───────────────────────────────────────────────────────────────
+    document.addEventListener('keydown', e => {
+        if (document.getElementById('lightbox').style.display === 'none') return;
+        if (e.key === 'ArrowLeft')  navigateLb(-1);
+        if (e.key === 'ArrowRight') navigateLb(1);
+        if (e.key === 'Escape')     closeLightbox();
+        if (e.key === 'ArrowUp')    loadOriginal();
+        if (e.key === 'Delete' && editMode) deleteCurrent();
+    });
+
+    document.addEventListener('mousemove', () => {
+        if (document.getElementById('lightbox').style.display !== 'none') showLbControls();
+    }, { passive: true });
+
+    // ── Touch zoom / pan / swipe in lightbox ──────────────────────────────────
+    (function () {
+        let s = 1, tx = 0, ty = 0;      // current transform
+        let t0 = null;                   // gesture start snapshot
+        let lastTap = 0;
+
+        function applyT(img, animated) {
+            img.style.transition = animated ? 'transform 0.28s ease' : '';
+            img.style.transform  = `translate(${tx}px,${ty}px) scale(${s})`;
+            lbZoomScale = s;
+        }
+
+        function clamp(img) {
+            const maxTx = Math.max(0, (img.offsetWidth  * s - window.innerWidth)  / 2);
+            const maxTy = Math.max(0, (img.offsetHeight * s - window.innerHeight) / 2);
+            tx = Math.max(-maxTx, Math.min(maxTx, tx));
+            ty = Math.max(-maxTy, Math.min(maxTy, ty));
+        }
+
+        function dist(touches) {
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+        function mid(touches) {
+            return { x: (touches[0].clientX + touches[1].clientX) / 2,
+                     y: (touches[0].clientY + touches[1].clientY) / 2 };
+        }
+
+        window.lbZoomReset = function (animated) {
+            s = 1; tx = 0; ty = 0;
+            lbZoomScale = 1;
+            const img = document.getElementById('lb-img');
+            img.style.transition = animated ? 'transform 0.28s ease' : '';
+            img.style.transform  = '';
+        };
+
+        const lb = document.getElementById('lightbox');
+
+        lb.addEventListener('touchstart', e => {
+            const img = document.getElementById('lb-img');
+            if (document.getElementById('lb-video').style.display === 'block') return;
+            if (e.touches.length > 2) { t0 = null; return; }
+
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                const m = mid(e.touches);
+                // Re-snapshot from current state so pinch starts cleanly
+                t0 = { s, tx, ty, dist: dist(e.touches), mx: m.x, my: m.y, isPinch: true };
+                return;
+            }
+
+            // Single finger
+            const cx = e.touches[0].clientX, cy = e.touches[0].clientY;
+            const now = Date.now();
+
+            // Double tap → zoom in / zoom out
+            if (now - lastTap < 280) {
+                lastTap = 0;
+                e.preventDefault();
+                if (s > 1) {
+                    s = 1; tx = 0; ty = 0;
+                } else {
+                    const ns = 2.5;
+                    const vw = window.innerWidth, vh = window.innerHeight;
+                    tx = (cx - vw / 2) * (1 - ns);
+                    ty = (cy - vh / 2) * (1 - ns);
+                    s  = ns;
+                    clamp(img);
+                }
+                applyT(img, true);
+                t0 = null;
+                return;
+            }
+            lastTap = now;
+            t0 = { s, tx, ty, x: cx, y: cy, isPinch: false };
+        }, { passive: false });
+
+        lb.addEventListener('touchmove', e => {
+            const img = document.getElementById('lb-img');
+            if (document.getElementById('lb-video').style.display === 'block') return;
+            if (!t0 || e.touches.length > 2) return;
+
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                // If t0 is a pan snapshot (second finger just added mid-pan), re-init pinch
+                if (!t0.isPinch) {
+                    const m0 = mid(e.touches);
+                    t0 = { s, tx, ty, dist: dist(e.touches), mx: m0.x, my: m0.y, isPinch: true };
+                    return;
+                }
+                const d  = dist(e.touches);
+                const m  = mid(e.touches);
+                const ns = Math.max(1, Math.min(12, t0.s * d / t0.dist));
+                const vw = window.innerWidth, vh = window.innerHeight;
+                const imgX = (t0.mx - vw / 2 - t0.tx) / t0.s;
+                const imgY = (t0.my - vh / 2 - t0.ty) / t0.s;
+                tx = m.x - vw / 2 - imgX * ns;
+                ty = m.y - vh / 2 - imgY * ns;
+                s  = ns;
+                clamp(img);
+                applyT(img, false);
+                return;
+            }
+
+            if (e.touches.length === 1 && s > 1) {
+                e.preventDefault();
+                // t0 must have x/y — if it's a stale pinch snapshot re-init
+                if (t0.isPinch) {
+                    t0 = { s, tx, ty, x: e.touches[0].clientX, y: e.touches[0].clientY, isPinch: false };
+                    return;
+                }
+                tx = t0.tx + (e.touches[0].clientX - t0.x);
+                ty = t0.ty + (e.touches[0].clientY - t0.y);
+                clamp(img);
+                applyT(img, false);
+            }
+        }, { passive: false });
+
+        lb.addEventListener('touchend', e => {
+            const img = document.getElementById('lb-img');
+
+            // Pinch → pan: one finger remains → reset baseline for smooth pan continuation
+            if (e.touches.length === 1) {
+                t0 = { s, tx, ty, x: e.touches[0].clientX, y: e.touches[0].clientY, isPinch: false };
+                return;
+            }
+
+            // All fingers up
+            if (e.touches.length === 0) {
+                // Swipe nav: only from a clean single-finger gesture, not after pinch
+                if (t0 && !t0.isPinch && s <= 1) {
+                    const dx = e.changedTouches[0].clientX - t0.x;
+                    const dy = Math.abs(e.changedTouches[0].clientY - t0.y);
+                    if (Math.abs(dx) > 48 && dy < 80) {
+                        t0 = null;
+                        if (dx < 0) navigateLb(1); else navigateLb(-1);
+                        return;
+                    }
+                }
+                if (s < 1.05 && s !== 1) { s = 1; tx = 0; ty = 0; applyT(img, true); }
+                t0 = null;
+            }
+        }, { passive: true });
+    })();
+    </script>
+</body>
+</html>

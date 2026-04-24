@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>{{title}}</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Arial', sans-serif;
+      background: radial-gradient(circle at center, #0f0f0f, #1a1a2e, #16213e);
+      color: #fff;
+      overflow: hidden;
+      height: 100vh;
+      touch-action: none;
+    }
+
+    .game-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      padding: 10px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      color: #00ff88;
+      text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+      margin-bottom: 10px;
+    }
+
+    .info {
+      font-size: 14px;
+      color: #aaa;
+      max-width: 300px;
+      line-height: 1.4;
+    }
+
+    .maze-wrapper {
+      position: relative;
+      border: 3px solid #00ff88;
+      border-radius: 10px;
+      box-shadow: 
+        0 0 30px rgba(0, 255, 136, 0.3),
+        inset 0 0 30px rgba(0, 0, 0, 0.5);
+      background: #000;
+    }
+
+    #gameCanvas {
+      display: block;
+      border-radius: 7px;
+    }
+
+    .controls {
+      margin-top: 20px;
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn {
+      background: linear-gradient(45deg, #00ff88, #00cc6a);
+      border: none;
+      padding: 12px 24px;
+      border-radius: 25px;
+      color: #000;
+      font-weight: bold;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 5px 15px rgba(0, 255, 136, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn:before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+      transition: left 0.5s;
+    }
+
+    .btn:hover:before {
+      left: 100%;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 255, 136, 0.5);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .status-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      border-radius: 7px;
+      backdrop-filter: blur(5px);
+    }
+
+    .status-content {
+      text-align: center;
+      padding: 30px;
+      background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 204, 106, 0.1));
+      border-radius: 15px;
+      border: 2px solid #00ff88;
+      box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+    }
+
+    .status-content h2 {
+      font-size: 28px;
+      margin-bottom: 15px;
+      color: #00ff88;
+      text-shadow: 0 0 20px rgba(0, 255, 136, 0.7);
+    }
+
+    .status-content p {
+      font-size: 16px;
+      margin-bottom: 20px;
+      color: #ccc;
+    }
+
+    .difficulty-selector {
+      margin-top: 10px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .calibration-controls {
+      margin-top: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+      background: rgba(0, 255, 136, 0.05);
+      padding: 15px;
+      border-radius: 10px;
+      border: 1px solid rgba(0, 255, 136, 0.2);
+    }
+
+    .sensitivity-control {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .sensitivity-control input[type="range"] {
+      width: 150px;
+      accent-color: #00ff88;
+    }
+
+    .calibration-status {
+      font-size: 12px;
+      color: #888;
+      text-align: center;
+      margin-top: 5px;
+    }
+
+    .calibrating {
+      color: #ffaa00 !important;
+    }
+
+    .calibrated {
+      color: #00ff88 !important;
+    }
+
+    .difficulty-selector label {
+      color: #aaa;
+      font-size: 14px;
+    }
+
+    .difficulty-selector select {
+      background: rgba(0, 255, 136, 0.1);
+      border: 1px solid #00ff88;
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 5px;
+      outline: none;
+    }
+
+    .gyro-status {
+      margin-top: 15px;
+      font-size: 12px;
+      color: #888;
+      text-align: center;
+    }
+
+    .gyro-active {
+      color: #00ff88 !important;
+    }
+
+    @media (max-width: 480px) {
+      .header h1 {
+        font-size: 20px;
+      }
+      
+      .info {
+        font-size: 12px;
+        max-width: 280px;
+      }
+      
+      .btn {
+        padding: 10px 18px;
+        font-size: 12px;
+      }
+      
+      .controls {
+        gap: 10px;
+      }
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 30px rgba(0, 255, 136, 0.3); }
+      50% { box-shadow: 0 0 50px rgba(0, 255, 136, 0.6); }
+      100% { box-shadow: 0 0 30px rgba(0, 255, 136, 0.3); }
+    }
+
+    .victory-pulse {
+      animation: pulse 2s infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <div class="header">
+      <h1>🌀 GYRO MAZE 🌀</h1>
+      <div class="info">
+        Наклоняй устройство, чтобы управлять энергетическим шаром.<br>
+        Найди путь к порталу выхода!
+      </div>
+    </div>
+
+    <div class="maze-wrapper">
+      <canvas id="gameCanvas"></canvas>
+      <div class="status-overlay" id="statusOverlay">
+        <div class="status-content">
+          <h2 id="statusTitle">🎉 Победа!</h2>
+          <p id="statusMessage">Вы успешно прошли лабиринт!</p>
+          <button class="btn" onclick="hideStatus(); generateNewMaze();">Новый лабиринт</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn" onclick="generateNewMaze()">🎲 Новый лабиринт</button>
+      <button class="btn" onclick="requestGyroPermission()">📱 Активировать гироскоп</button>
+      <button class="btn" onclick="calibrateGyroscope()" id="calibrateBtn">⚙️ Калибровка</button>
+      <div class="difficulty-selector">
+        <label>Размер:</label>
+        <select id="mazeSize" onchange="changeMazeSize()">
+          <option value="small">Маленький</option>
+          <option value="medium" selected>Средний</option>
+          <option value="large">Большой</option>
+          <option value="huge">Огромный</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="calibration-controls">
+      <div class="sensitivity-control">
+        <label>Чувствительность:</label>
+        <input type="range" id="sensitivitySlider" min="0.2" max="2" step="0.1" value="0.5" onchange="updateSensitivity()"
+        <span id="sensitivityValue">0.5</span>
+      </div>
+      <div class="calibration-status" id="calibrationStatus">
+        Калибровка не выполнена
+      </div>
+    </div>
+
+    <div class="gyro-status" id="gyroStatus">
+      Гироскоп: не активен
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Конфигурация игры (адаптируем под размер экрана)
+    let config = {
+      small: { width: 8, height: 8, cellSize: 35 },
+      medium: { width: 10, height: 10, cellSize: 30 },
+      large: { width: 12, height: 12, cellSize: 25 },
+      huge: { width: 14, height: 14, cellSize: 22 }
+    };
+
+    let currentConfig = config.medium;
+    let maze = [];
+    let ball = null;
+    let gameWon = false;
+    let gyroEnabled = false;
+    let animationId = null;
+    
+    // Калибровка гироскопа
+    let gyroCalibration = { gamma: 0, beta: 0 };
+    let isCalibrating = false;
+    let calibrationSamples = [];
+    let gyroCalibratedOnce = false;
+    let gyroSensitivity = 0.5; // Уменьшили стандартное значение
+
+    // Класс ячейки лабиринта
+    class MazeCell {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.visited = false;
+        this.walls = {
+          top: true,
+          right: true,
+          bottom: true,
+          left: true
+        };
+      }
+
+      // Получить соседей ячейки
+      getUnvisitedNeighbors() {
+        const neighbors = [];
+        const { x, y } = this;
+        
+        // Проверяем всех соседей
+        if (y > 0 && !maze[y - 1][x].visited) neighbors.push({ cell: maze[y - 1][x], direction: 'top' });
+        if (x < currentConfig.width - 1 && !maze[y][x + 1].visited) neighbors.push({ cell: maze[y][x + 1], direction: 'right' });
+        if (y < currentConfig.height - 1 && !maze[y + 1][x].visited) neighbors.push({ cell: maze[y + 1][x], direction: 'bottom' });
+        if (x > 0 && !maze[y][x - 1].visited) neighbors.push({ cell: maze[y][x - 1], direction: 'left' });
+        
+        return neighbors;
+      }
+
+      // Убрать стену между двумя ячейками
+      removeWall(neighbor, direction) {
+        switch (direction) {
+          case 'top':
+            this.walls.top = false;
+            neighbor.walls.bottom = false;
+            break;
+          case 'right':
+            this.walls.right = false;
+            neighbor.walls.left = false;
+            break;
+          case 'bottom':
+            this.walls.bottom = false;
+            neighbor.walls.top = false;
+            break;
+          case 'left':
+            this.walls.left = false;
+            neighbor.walls.right = false;
+            break;
+        }
+      }
+    }
+
+    // Класс шарика
+    class EnergyBall {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.vx = 0;
+        this.vy = 0;
+        this.radius = currentConfig.cellSize * 0.2; // Уменьшили размер шарика
+        this.trail = [];
+        this.energy = 100;
+        this.glowIntensity = 0;
+      }
+
+      update() {
+        if (gameWon) return;
+
+        // Применяем трение
+        this.vx *= 0.95;
+        this.vy *= 0.95;
+
+        // Ограничиваем максимальную скорость
+        const maxSpeed = currentConfig.cellSize * 0.2;
+        const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+        if (speed > maxSpeed) {
+          this.vx = (this.vx / speed) * maxSpeed;
+          this.vy = (this.vy / speed) * maxSpeed;
+        }
+
+        // Обновляем позицию
+        this.x += this.vx;
+        this.y += this.vy;
+        
+        // Проверяем коллизии со стенами после движения
+        this.checkWallCollisions();
+
+        // Ограничиваем в пределах канвы
+        this.x = Math.max(this.radius, Math.min(canvas.width - this.radius, this.x));
+        this.y = Math.max(this.radius, Math.min(canvas.height - this.radius, this.y));
+
+        // Обновляем след
+        this.updateTrail();
+
+        // Обновляем эффекты
+        this.glowIntensity = Math.sin(Date.now() * 0.01) * 0.5 + 0.5;
+
+        // Проверяем победу
+        this.checkVictory();
+      }
+
+      checkWallCollisions() {
+        const cellX = Math.floor(this.x / currentConfig.cellSize);
+        const cellY = Math.floor(this.y / currentConfig.cellSize);
+        
+        if (cellY < 0 || cellY >= currentConfig.height || cellX < 0 || cellX >= currentConfig.width) return;
+        
+        const cell = maze[cellY][cellX];
+        const cellLeft = cellX * currentConfig.cellSize;
+        const cellTop = cellY * currentConfig.cellSize;
+        const cellRight = cellLeft + currentConfig.cellSize;
+        const cellBottom = cellTop + currentConfig.cellSize;
+        
+        const wallThickness = 1;
+
+        // Проверка коллизий со стенами с увеличенными отскоками
+        if (cell.walls.top && this.y - this.radius <= cellTop + wallThickness) {
+          this.y = cellTop + this.radius + wallThickness;
+          if (this.vy < 0) this.vy = -this.vy * 0.8; // Увеличили отскок с 0.5 до 0.8
+        }
+        if (cell.walls.bottom && this.y + this.radius >= cellBottom - wallThickness) {
+          this.y = cellBottom - this.radius - wallThickness;
+          if (this.vy > 0) this.vy = -this.vy * 0.8;
+        }
+        if (cell.walls.left && this.x - this.radius <= cellLeft + wallThickness) {
+          this.x = cellLeft + this.radius + wallThickness;
+          if (this.vx < 0) this.vx = -this.vx * 0.8;
+        }
+        if (cell.walls.right && this.x + this.radius >= cellRight - wallThickness) {
+          this.x = cellRight - this.radius - wallThickness;
+          if (this.vx > 0) this.vx = -this.vx * 0.8;
+        }
+      }
+
+      updateTrail() {
+        this.trail.push({ x: this.x, y: this.y, time: Date.now() });
+        
+        // Удаляем старые точки следа
+        const maxAge = 500;
+        const now = Date.now();
+        this.trail = this.trail.filter(point => now - point.time < maxAge);
+      }
+
+      checkVictory() {
+        const goalX = (currentConfig.width - 1) * currentConfig.cellSize + currentConfig.cellSize / 2;
+        const goalY = (currentConfig.height - 1) * currentConfig.cellSize + currentConfig.cellSize / 2;
+        const distance = Math.sqrt((this.x - goalX) ** 2 + (this.y - goalY) ** 2);
+        
+        if (distance < currentConfig.cellSize * 0.3 && !gameWon) {
+          gameWon = true;
+          showVictory();
+        }
+      }
+
+      draw() {
+        // Рисуем след
+        this.drawTrail();
+        
+        // Рисуем свечение
+        const glowRadius = this.radius * (2 + this.glowIntensity);
+        const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, glowRadius);
+        gradient.addColorStop(0, 'rgba(0, 255, 136, 0.8)');
+        gradient.addColorStop(0.5, 'rgba(0, 255, 136, 0.3)');
+        gradient.addColorStop(1, 'rgba(0, 255, 136, 0)');
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, glowRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Рисуем основной шарик
+        const ballGradient = ctx.createRadialGradient(
+          this.x - this.radius * 0.3, 
+          this.y - this.radius * 0.3, 
+          0,
+          this.x, 
+          this.y, 
+          this.radius
+        );
+        ballGradient.addColorStop(0, '#ffffff');
+        ballGradient.addColorStop(0.3, '#00ff88');
+        ballGradient.addColorStop(1, '#00cc6a');
+
+        ctx.fillStyle = ballGradient;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Внутренний блик
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.beginPath();
+        ctx.arc(this.x - this.radius * 0.4, this.y - this.radius * 0.4, this.radius * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      drawTrail() {
+        if (this.trail.length < 2) return;
+        
+        const now = Date.now();
+        ctx.strokeStyle = '#00ff88';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        
+        for (let i = 1; i < this.trail.length; i++) {
+          const point = this.trail[i];
+          const prevPoint = this.trail[i - 1];
+          const age = now - point.time;
+          const alpha = Math.max(0, 1 - age / 500);
+          
+          ctx.globalAlpha = alpha * 0.5;
+          ctx.beginPath();
+          ctx.moveTo(prevPoint.x, prevPoint.y);
+          ctx.lineTo(point.x, point.y);
+          ctx.stroke();
+        }
+        
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // Инициализация лабиринта
+    function initMaze() {
+      maze = [];
+      for (let y = 0; y < currentConfig.height; y++) {
+        maze[y] = [];
+        for (let x = 0; x < currentConfig.width; x++) {
+          maze[y][x] = new MazeCell(x, y);
+        }
+      }
+    }
+
+    // Генерация лабиринта алгоритмом растущего дерева (модифицированный Прим)
+    function generateMaze() {
+      // Очищаем лабиринт
+      initMaze();
+      
+      // Список активных ячеек
+      const activeCells = [];
+      
+      // Начинаем с случайной ячейки
+      const startCell = maze[Math.floor(Math.random() * currentConfig.height)][Math.floor(Math.random() * currentConfig.width)];
+      startCell.visited = true;
+      activeCells.push(startCell);
+      
+      while (activeCells.length > 0) {
+        // Выбираем случайную активную ячейку (это создает более интересные лабиринты)
+        const currentIndex = Math.floor(Math.random() * activeCells.length);
+        const current = activeCells[currentIndex];
+        
+        const neighbors = current.getUnvisitedNeighbors();
+        
+        if (neighbors.length > 0) {
+          // Выбираем случайного соседа
+          const { cell: next, direction } = neighbors[Math.floor(Math.random() * neighbors.length)];
+          
+          // Убираем стену и помечаем как посещенную
+          current.removeWall(next, direction);
+          next.visited = true;
+          activeCells.push(next);
+        } else {
+          // Убираем ячейку из активных
+          activeCells.splice(currentIndex, 1);
+        }
+      }
+      
+      // Создаем дополнительные проходы для более интересной структуры
+      const extraPaths = Math.floor((currentConfig.width * currentConfig.height) * 0.1);
+      for (let i = 0; i < extraPaths; i++) {
+        const x = Math.floor(Math.random() * currentConfig.width);
+        const y = Math.floor(Math.random() * currentConfig.height);
+        const cell = maze[y][x];
+        
+        const directions = ['top', 'right', 'bottom', 'left'];
+        const direction = directions[Math.floor(Math.random() * directions.length)];
+        
+        let neighbor = null;
+        switch (direction) {
+          case 'top':
+            if (y > 0) neighbor = maze[y - 1][x];
+            break;
+          case 'right':
+            if (x < currentConfig.width - 1) neighbor = maze[y][x + 1];
+            break;
+          case 'bottom':
+            if (y < currentConfig.height - 1) neighbor = maze[y + 1][x];
+            break;
+          case 'left':
+            if (x > 0) neighbor = maze[y][x - 1];
+            break;
+        }
+        
+        if (neighbor) {
+          cell.removeWall(neighbor, direction);
+        }
+      }
+    }
+
+    // Рисование лабиринта
+    function drawMaze() {
+      // Очищаем канву градиентом
+      const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      gradient.addColorStop(0, '#0a0a0a');
+      gradient.addColorStop(0.5, '#1a1a2e');
+      gradient.addColorStop(1, '#0a0a0a');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Рисуем сетку лабиринта (более толстые стены для широких коридоров)
+      ctx.strokeStyle = '#00ff88';
+      ctx.lineWidth = 2; // Уменьшаем толщину стен для более широких коридоров
+      ctx.lineCap = 'round';
+      ctx.shadowColor = '#00ff88';
+      ctx.shadowBlur = 5;
+
+      for (let y = 0; y < currentConfig.height; y++) {
+        for (let x = 0; x < currentConfig.width; x++) {
+          const cell = maze[y][x];
+          const pixelX = x * currentConfig.cellSize;
+          const pixelY = y * currentConfig.cellSize;
+
+          // Рисуем стены
+          ctx.beginPath();
+          if (cell.walls.top) {
+            ctx.moveTo(pixelX, pixelY);
+            ctx.lineTo(pixelX + currentConfig.cellSize, pixelY);
+          }
+          if (cell.walls.right) {
+            ctx.moveTo(pixelX + currentConfig.cellSize, pixelY);
+            ctx.lineTo(pixelX + currentConfig.cellSize, pixelY + currentConfig.cellSize);
+          }
+          if (cell.walls.bottom) {
+            ctx.moveTo(pixelX + currentConfig.cellSize, pixelY + currentConfig.cellSize);
+            ctx.lineTo(pixelX, pixelY + currentConfig.cellSize);
+          }
+          if (cell.walls.left) {
+            ctx.moveTo(pixelX, pixelY + currentConfig.cellSize);
+            ctx.lineTo(pixelX, pixelY);
+          }
+          ctx.stroke();
+        }
+      }
+
+      // Убираем тень для остальных элементов
+      ctx.shadowBlur = 0;
+
+      // Рисуем стартовую позицию
+      const startGradient = ctx.createRadialGradient(
+        currentConfig.cellSize / 2, 
+        currentConfig.cellSize / 2, 
+        0,
+        currentConfig.cellSize / 2, 
+        currentConfig.cellSize / 2, 
+        currentConfig.cellSize / 3
+      );
+      startGradient.addColorStop(0, 'rgba(0, 255, 136, 0.8)');
+      startGradient.addColorStop(1, 'rgba(0, 255, 136, 0.2)');
+      
+      ctx.fillStyle = startGradient;
+      ctx.beginPath();
+      ctx.arc(currentConfig.cellSize / 2, currentConfig.cellSize / 2, currentConfig.cellSize / 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Рисуем портал выхода (увеличиваем размер для лучшей видимости)
+      const goalX = (currentConfig.width - 1) * currentConfig.cellSize + currentConfig.cellSize / 2;
+      const goalY = (currentConfig.height - 1) * currentConfig.cellSize + currentConfig.cellSize / 2;
+      
+      // Анимированный портал (увеличенный)
+      const time = Date.now() * 0.01;
+      const portalRadius = currentConfig.cellSize * 0.35; // Увеличили размер портала
+      
+      // Внешнее свечение
+      const outerGlow = ctx.createRadialGradient(goalX, goalY, 0, goalX, goalY, portalRadius * 1.5);
+      outerGlow.addColorStop(0, 'rgba(255, 100, 255, 0.6)');
+      outerGlow.addColorStop(0.5, 'rgba(100, 200, 255, 0.3)');
+      outerGlow.addColorStop(1, 'rgba(100, 200, 255, 0)');
+      
+      ctx.fillStyle = outerGlow;
+      ctx.beginPath();
+      ctx.arc(goalX, goalY, portalRadius * 1.5, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Основные кольца портала
+      for (let i = 0; i < 3; i++) {
+        const radius = portalRadius * (1 - i * 0.15) * (1 + Math.sin(time + i) * 0.1);
+        const alpha = 0.9 - i * 0.2;
+        
+        const portalGradient = ctx.createRadialGradient(goalX, goalY, 0, goalX, goalY, radius);
+        portalGradient.addColorStop(0, `rgba(255, 150, 255, ${alpha})`);
+        portalGradient.addColorStop(0.6, `rgba(150, 220, 255, ${alpha * 0.7})`);
+        portalGradient.addColorStop(1, 'rgba(150, 220, 255, 0)');
+        
+        ctx.fillStyle = portalGradient;
+        ctx.beginPath();
+        ctx.arc(goalX, goalY, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
+      // Вращающиеся частицы вокруг портала (больше и ярче)
+      for (let i = 0; i < 12; i++) {
+        const angle = time + (i * Math.PI / 6);
+        const particleX = goalX + Math.cos(angle) * portalRadius * 0.9;
+        const particleY = goalY + Math.sin(angle) * portalRadius * 0.9;
+        
+        ctx.fillStyle = `rgba(255, 150, 255, ${0.8 + Math.sin(time * 3 + i) * 0.2})`;
+        ctx.beginPath();
+        ctx.arc(particleX, particleY, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
+      // Центральная звезда
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.8 + Math.sin(time * 4) * 0.2})`;
+      ctx.beginPath();
+      ctx.arc(goalX, goalY, portalRadius * 0.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Главный игровой цикл
+    function gameLoop() {
+      drawMaze();
+      
+      if (ball) {
+        ball.update();
+        ball.draw();
+      }
+      
+      if (!gameWon) {
+        animationId = requestAnimationFrame(gameLoop);
+      }
+    }
+
+    // Обработка гироскопа
+    function handleGyroscope(event) {
+      if (!gyroEnabled || !ball) return;
+      
+      const rawGamma = event.gamma || 0; // Наклон влево-вправо (-90 до 90)
+      const rawBeta = event.beta || 0;   // Наклон вперед-назад (-180 до 180)
+      
+      // Калибровка
+      if (isCalibrating) {
+        calibrationSamples.push({ gamma: rawGamma, beta: rawBeta });
+        if (calibrationSamples.length >= 50) {
+          finishCalibration();
+        }
+        return;
+      }
+      
+      // Применяем калибровку
+      const gamma = rawGamma - gyroCalibration.gamma;
+      const beta = rawBeta - gyroCalibration.beta;
+      
+      // Настраиваем чувствительность (сильно уменьшили)
+      const baseSensitivity = currentConfig.cellSize * 0.002; // Значительно уменьшили чувствительность
+      const sensitivity = baseSensitivity * gyroSensitivity;
+      
+      // Применяем силу с учетом ориентации устройства
+      ball.vx += gamma * sensitivity;
+      ball.vy += beta * sensitivity;
+    }
+
+    // Запрос разрешения на гироскоп
+    async function requestGyroPermission() {
+      try {
+        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+          const permission = await DeviceOrientationEvent.requestPermission();
+          if (permission === 'granted') {
+            enableGyroscope();
+          } else {
+            document.getElementById('gyroStatus').textContent = 'Гироскоп: разрешение отклонено';
+          }
+        } else {
+          enableGyroscope();
+        }
+      } catch (error) {
+        console.error('Ошибка запроса разрешения гироскопа:', error);
+        document.getElementById('gyroStatus').textContent = 'Гироскоп: ошибка активации';
+      }
+    }
+
+    // Включение гироскопа
+    function enableGyroscope() {
+      window.addEventListener('deviceorientation', handleGyroscope, { passive: false });
+      gyroEnabled = true;
+      document.getElementById('gyroStatus').textContent = 'Гироскоп: активен';
+      document.getElementById('gyroStatus').classList.add('gyro-active');
+    }
+
+    // Адаптировка конфигурации под размер экрана
+    function adaptConfigToScreen() {
+      const maxWidth = Math.min(window.innerWidth - 40, 500); // Максимальная ширина минус отступы
+      const maxHeight = Math.min(window.innerHeight - 200, 500); // Максимальная высота минус UI
+      const maxSize = Math.min(maxWidth, maxHeight);
+      
+      // Пересчитываем размеры ячеек для каждого уровня
+      config = {
+        small: {
+          width: 8,
+          height: 8,
+          cellSize: Math.floor(maxSize / 8)
+        },
+        medium: {
+          width: 10,
+          height: 10,
+          cellSize: Math.floor(maxSize / 10)
+        },
+        large: {
+          width: 12,
+          height: 12,
+          cellSize: Math.floor(maxSize / 12)
+        },
+        huge: {
+          width: 14,
+          height: 14,
+          cellSize: Math.floor(maxSize / 14)
+        }
+      };
+      
+      // Минимальный размер ячейки
+      Object.keys(config).forEach(key => {
+        if (config[key].cellSize < 20) {
+          config[key].cellSize = 20;
+        }
+      });
+    }
+    
+    // Установка размеров канвы
+    function setCanvasSize() {
+      canvas.width = currentConfig.width * currentConfig.cellSize;
+      canvas.height = currentConfig.height * currentConfig.cellSize;
+    }
+
+    // Создание нового лабиринта
+    function generateNewMaze() {
+      gameWon = false;
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
+      
+      // Адаптируем конфигурацию под экран
+      adaptConfigToScreen();
+      
+      setCanvasSize();
+      generateMaze();
+      
+      // Создаем новый шарик
+      ball = new EnergyBall(
+        currentConfig.cellSize / 2,
+        currentConfig.cellSize / 2
+      );
+      
+      hideStatus();
+      gameLoop();
+    }
+
+    // Изменение размера лабиринта
+    function changeMazeSize() {
+      const size = document.getElementById('mazeSize').value;
+      adaptConfigToScreen(); // Пересчитываем конфигурацию
+      currentConfig = config[size];
+      generateNewMaze();
+    }
+
+    // Показать экран победы
+    function showVictory() {
+      document.getElementById('statusOverlay').style.display = 'flex';
+      document.querySelector('.maze-wrapper').classList.add('victory-pulse');
+      
+      // Добавляем конфетти эффект
+      createConfetti();
+    }
+
+    // Скрыть экран статуса
+    function hideStatus() {
+      document.getElementById('statusOverlay').style.display = 'none';
+      document.querySelector('.maze-wrapper').classList.remove('victory-pulse');
+    }
+
+    // Эффект конфетти
+    function createConfetti() {
+      const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#f9ca24', '#6c5ce7'];
+      const confettiContainer = document.body;
+      
+      for (let i = 0; i < 50; i++) {
+        const confetti = document.createElement('div');
+        confetti.style.position = 'fixed';
+        confetti.style.width = '10px';
+        confetti.style.height = '10px';
+        confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        confetti.style.left = Math.random() * window.innerWidth + 'px';
+        confetti.style.top = '-10px';
+        confetti.style.zIndex = '9999';
+        confetti.style.borderRadius = '50%';
+        confetti.style.pointerEvents = 'none';
+        
+        confettiContainer.appendChild(confetti);
+        
+        const animation = confetti.animate([
+          { transform: 'translateY(0px) rotate(0deg)', opacity: 1 },
+          { transform: `translateY(${window.innerHeight + 100}px) rotate(${Math.random() * 360}deg)`, opacity: 0 }
+        ], {
+          duration: Math.random() * 3000 + 2000,
+          easing: 'ease-out'
+        });
+        
+        animation.onfinish = () => confetti.remove();
+      }
+    }
+
+    // Сенсорное управление для устройств без гироскопа
+    let touchStartX = 0;
+    let touchStartY = 0;
+    
+    canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+    }, { passive: false });
+    
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      if (!ball || gyroEnabled) return;
+      
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - touchStartX;
+      const deltaY = touch.clientY - touchStartY;
+      
+      const sensitivity = 0.005; // Сильно уменьшили чувствительность тач-управления
+      ball.vx += deltaX * sensitivity;
+      ball.vy += deltaY * sensitivity;
+      
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+    }, { passive: false });
+
+    // Предотвращаем скролл на мобильных устройствах
+    document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+
+    // Обработка изменения размера экрана
+    window.addEventListener('resize', () => {
+      adaptConfigToScreen();
+      const size = document.getElementById('mazeSize').value;
+      currentConfig = config[size];
+      generateNewMaze();
+    });
+    
+    // Инициализация игры
+    adaptConfigToScreen(); // Адаптируем под текущий экран
+    generateNewMaze();
+
+    // Функция калибровки гироскопа
+    function calibrateGyroscope() {
+      if (!gyroEnabled) {
+        alert('Сначала активируйте гироскоп!');
+        return;
+      }
+      
+      isCalibrating = true;
+      calibrationSamples = [];
+      
+      document.getElementById('calibrationStatus').textContent = 'Калибровка... Держите устройство ровно!';
+      document.getElementById('calibrationStatus').classList.add('calibrating');
+      document.getElementById('calibrateBtn').disabled = true;
+      
+      setTimeout(() => {
+        if (isCalibrating && calibrationSamples.length < 10) {
+          // Если мало данных, останавливаем калибровку
+          isCalibrating = false;
+          document.getElementById('calibrationStatus').textContent = 'Ошибка калибровки - недостаточно данных';
+          document.getElementById('calibrationStatus').classList.remove('calibrating');
+          document.getElementById('calibrateBtn').disabled = false;
+        }
+      }, 5000);
+    }
+    
+    // Завершение калибровки
+    function finishCalibration() {
+      if (calibrationSamples.length === 0) return;
+      
+      // Вычисляем средние значения
+      let sumGamma = 0, sumBeta = 0;
+      for (const sample of calibrationSamples) {
+        sumGamma += sample.gamma;
+        sumBeta += sample.beta;
+      }
+      
+      gyroCalibration.gamma = sumGamma / calibrationSamples.length;
+      gyroCalibration.beta = sumBeta / calibrationSamples.length;
+      
+      isCalibrating = false;
+      gyroCalibratedOnce = true;
+      
+      document.getElementById('calibrationStatus').textContent = 'Калибровка завершена!';
+      document.getElementById('calibrationStatus').classList.remove('calibrating');
+      document.getElementById('calibrationStatus').classList.add('calibrated');
+      document.getElementById('calibrateBtn').disabled = false;
+    }
+    
+    // Обновление чувствительности
+    function updateSensitivity() {
+      const slider = document.getElementById('sensitivitySlider');
+      gyroSensitivity = parseFloat(slider.value);
+      document.getElementById('sensitivityValue').textContent = gyroSensitivity.toFixed(1);
+    }
+
+    // Автоматическая активация гироскопа для Android
+    if (window.DeviceOrientationEvent && !navigator.userAgent.match(/iPhone|iPad|iPod/)) {
+      setTimeout(() => {
+        if (!gyroEnabled) {
+          requestGyroPermission();
+        }
+      }, 2000);
+    }
+  </script>
+</body>
+</html>

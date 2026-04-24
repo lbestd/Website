@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Юрий Липовецкий - Фитнес Тренер</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        .hero {
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100" fill="%23ffffff" opacity="0.1"><path d="M0,0v46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1099.07,7.72,1200,52.12V0Z"></path></svg>') repeat-x;
+            background-size: 1000px 100px;
+            animation: wave 20s linear infinite;
+        }
+
+        @keyframes wave {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-1000px); }
+        }
+
+        .hero-content {
+            z-index: 1;
+            position: relative;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            animation: slideInUp 1s ease-out;
+        }
+
+        .hero .subtitle {
+            font-size: 1.5rem;
+            font-weight: 300;
+            margin-bottom: 2rem;
+            animation: slideInUp 1s ease-out 0.3s both;
+        }
+
+        .hero .tagline {
+            font-size: 1.2rem;
+            margin-bottom: 3rem;
+            opacity: 0.9;
+            animation: slideInUp 1s ease-out 0.6s both;
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 15px 40px;
+            background: #ff6b6b;
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(255, 107, 107, 0.3);
+            animation: slideInUp 1s ease-out 0.9s both;
+        }
+
+        .btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(255, 107, 107, 0.4);
+            background: #ff5252;
+        }
+
+        .section {
+            padding: 80px 0;
+            position: relative;
+            z-index: 5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 3rem;
+            color: #333;
+        }
+
+        .about {
+            background: #f8f9fa;
+            position: relative;
+            z-index: 10;
+        }
+
+        .about-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+        }
+
+        .about-text {
+            font-size: 1.1rem;
+            line-height: 1.8;
+        }
+
+        .about-text h3 {
+            color: #667eea;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+
+        .about-image {
+            text-align: center;
+        }
+
+        .trainer-photo {
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8rem;
+            color: white;
+            margin: 0 auto;
+            box-shadow: 0 20px 40px rgba(102, 126, 234, 0.3);
+        }
+
+        .services {
+            background: white;
+        }
+
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 40px;
+        }
+
+        .service-card {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .service-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .service-card .icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .service-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+
+        .service-card p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .stats {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 40px;
+            text-align: center;
+        }
+
+        .stat-item h3 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-item p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .contact {
+            background: #f8f9fa;
+        }
+
+        .contact-content {
+            text-align: center;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .contact-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin-top: 3rem;
+        }
+
+        .contact-item {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .contact-item .icon {
+            font-size: 2rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .contact-item h4 {
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+
+        .contact-item p {
+            color: #666;
+            margin: 0;
+        }
+
+        .contact-item a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .contact-item a:hover {
+            color: #764ba2;
+        }
+
+        .scroll-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .scroll-to-top.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .scroll-to-top:hover {
+            background: #764ba2;
+            transform: translateY(-5px);
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            
+            .hero .subtitle {
+                font-size: 1.2rem;
+            }
+            
+            .about-content {
+                grid-template-columns: 1fr;
+                gap: 40px;
+                text-align: center;
+            }
+            
+            .trainer-photo {
+                width: 250px;
+                height: 250px;
+                font-size: 6rem;
+            }
+            
+            .section-title {
+                font-size: 2rem;
+            }
+            
+            .services-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .contact-info {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .testimonials {
+            background: white;
+            padding: 80px 0;
+        }
+
+        .testimonials-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-top: 3rem;
+        }
+
+        .testimonial-card {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            position: relative;
+            border-left: 4px solid #667eea;
+        }
+
+        .testimonial-card::before {
+            content: '"';
+            font-size: 4rem;
+            color: #667eea;
+            position: absolute;
+            top: -10px;
+            left: 20px;
+            font-family: serif;
+        }
+
+        .testimonial-text {
+            font-style: italic;
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+
+        .testimonial-author {
+            font-weight: 500;
+            color: #667eea;
+        }
+
+        .programs {
+            background: #f8f9fa;
+            padding: 80px 0;
+        }
+
+        .programs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 3rem;
+        }
+
+        .program-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .program-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .program-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .program-price {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .program-duration {
+            opacity: 0.9;
+        }
+
+        .program-features {
+            padding: 30px;
+        }
+
+        .program-features ul {
+            list-style: none;
+        }
+
+        .program-features li {
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+            position: relative;
+            padding-left: 30px;
+        }
+
+        .program-features li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .program-features li:last-child {
+            border-bottom: none;
+        }
+
+        .program-btn {
+            display: block;
+            width: calc(100% - 40px);
+            margin: 0 20px 20px;
+            padding: 15px;
+            background: #667eea;
+            color: white;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 500;
+            transition: background 0.3s ease;
+        }
+
+        .program-btn:hover {
+            background: #764ba2;
+        }
+    </style>
+</head>
+<body>
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Юрий Липовецкий</h1>
+            <p class="subtitle">Персональный Фитнес Тренер</p>
+            <p class="tagline">Достигай своих целей с профессиональным подходом</p>
+            <a href="#contact" class="btn">Записаться на тренировку</a>
+        </div>
+    </section>
+
+    <section class="section about" id="about">
+        <div class="container">
+            <h2 class="section-title">О тренере</h2>
+            <div class="about-content">
+                <div class="about-text">
+                    <h3>Профессиональный подход к фитнесу</h3>
+                    <p>Привет! Меня зовут Юрий Липовецкий, мне 49 лет, и я персональный фитнес-тренер с более чем 15-летним опытом работы. Моя миссия — показать, что возраст не препятствие для достижения отличной физической формы, и помочь каждому клиенту достичь своих фитнес-целей.</p>
+                    
+                    <p>Имея богатый жизненный опыт, я понимаю особенности тренировок в разном возрасте и разрабатываю персональные программы, учитывая не только ваши цели, но и состояние здоровья, образ жизни и возрастные особенности. Вместе мы создадим не просто красивое тело, но и здоровый, активный образ жизни на долгие годы.</p>
+                    
+                    <p><strong>Сертификации:</strong> NASM-CPT, Специалист по коррекционным упражнениям, Nutrition Coach</p>
+                </div>
+                <div class="about-image">
+                    <div class="trainer-photo">
+                        <i class="fas fa-dumbbell"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section services" id="services">
+        <div class="container">
+            <h2 class="section-title">Мои услуги</h2>
+            <div class="services-grid">
+                <div class="service-card">
+                    <div class="icon">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <h3>Персональные тренировки</h3>
+                    <p>Индивидуальные занятия с полным вниманием к вашим целям и особенностям. Максимальная эффективность и безопасность каждой тренировки.</p>
+                </div>
+                <div class="service-card">
+                    <div class="icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3>Групповые занятия</h3>
+                    <p>Энергичные тренировки в мини-группах до 4 человек. Мотивация от команды и персональное внимание тренера.</p>
+                </div>
+                <div class="service-card">
+                    <div class="icon">
+                        <i class="fas fa-apple-alt"></i>
+                    </div>
+                    <h3>Планы питания</h3>
+                    <p>Составление индивидуального плана питания, подходящего для ваших целей и образа жизни. Без жестких диет — только здоровые привычки.</p>
+                </div>
+                <div class="service-card">
+                    <div class="icon">
+                        <i class="fas fa-mobile-alt"></i>
+                    </div>
+                    <h3>Онлайн-коучинг</h3>
+                    <p>Персональное сопровождение удаленно. Программы тренировок, планы питания и постоянная поддержка через мобильное приложение.</p>
+                </div>
+                <div class="service-card">
+                    <div class="icon">
+                        <i class="fas fa-heartbeat"></i>
+                    </div>
+                    <h3>Функциональный тренинг</h3>
+                    <p>Тренировки, направленные на развитие функциональности тела в повседневной жизни. Улучшение координации, баланса и силы.</p>
+                </div>
+                <div class="service-card">
+                    <div class="icon">
+                        <i class="fas fa-home"></i>
+                    </div>
+                    <h3>Домашние тренировки</h3>
+                    <p>Эффективные тренировки у вас дома с минимальным оборудованием. Экономия времени без потери качества.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section stats">
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <h3>500+</h3>
+                    <p>Довольных клиентов</p>
+                </div>
+                <div class="stat-item">
+                    <h3>15</h3>
+                    <p>Лет опыта</p>
+                </div>
+                <div class="stat-item">
+                    <h3>5000+</h3>
+                    <p>Проведенных тренировок</p>
+                </div>
+                <div class="stat-item">
+                    <h3>95%</h3>
+                    <p>Достигают целей</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section programs" id="programs">
+        <div class="container">
+            <h2 class="section-title">Программы тренировок</h2>
+            <div class="programs-grid">
+                <div class="program-card">
+                    <div class="program-header">
+                        <div class="program-price">₽3,000</div>
+                        <div class="program-duration">за тренировку</div>
+                    </div>
+                    <div class="program-features">
+                        <h3>Персональная тренировка</h3>
+                        <ul>
+                            <li>Индивидуальная программа</li>
+                            <li>90 минут занятия</li>
+                            <li>Полное внимание тренера</li>
+                            <li>Коррекция техники</li>
+                            <li>Гибкий график</li>
+                        </ul>
+                    </div>
+                    <a href="#contact" class="program-btn">Записаться</a>
+                </div>
+                <div class="program-card">
+                    <div class="program-header">
+                        <div class="program-price">₽2,000</div>
+                        <div class="program-duration">за тренировку</div>
+                    </div>
+                    <div class="program-features">
+                        <h3>Групповая тренировка</h3>
+                        <ul>
+                            <li>Группа до 4 человек</li>
+                            <li>60 минут занятия</li>
+                            <li>Командная мотивация</li>
+                            <li>Социальный аспект</li>
+                            <li>Экономия бюджета</li>
+                        </ul>
+                    </div>
+                    <a href="#contact" class="program-btn">Записаться</a>
+                </div>
+                <div class="program-card">
+                    <div class="program-header">
+                        <div class="program-price">₽5,000</div>
+                        <div class="program-duration">в месяц</div>
+                    </div>
+                    <div class="program-features">
+                        <h3>Онлайн-коучинг</h3>
+                        <ul>
+                            <li>Персональная программа</li>
+                            <li>План питания</li>
+                            <li>Ежедневная поддержка</li>
+                            <li>Видео-консультации</li>
+                            <li>Мониторинг прогресса</li>
+                        </ul>
+                    </div>
+                    <a href="#contact" class="program-btn">Записаться</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section testimonials">
+        <div class="container">
+            <h2 class="section-title">Отзывы клиентов</h2>
+            <div class="testimonials-grid">
+                <div class="testimonial-card">
+                    <p class="testimonial-text">Юрий помог мне сбросить 15 кг за 4 месяца! Главное — я научился правильно питаться и теперь поддерживаю форму самостоятельно. Его опыт и мудрость неоценимы!</p>
+                    <div class="testimonial-author">— Алексей, 32 года</div>
+                </div>
+                <div class="testimonial-card">
+                    <p class="testimonial-text">Занимаюсь с Юрием уже год. Наконец-то нашла тренера, который понимает особенности тренировок в зрелом возрасте. Результат превзошел все ожидания!</p>
+                    <div class="testimonial-author">— Мария, 45 лет</div>
+                </div>
+                <div class="testimonial-card">
+                    <p class="testimonial-text">Юрий — это не просто тренер, а наставник. Его подход учитывает все нюансы здоровья. В 50 лет чувствую себя лучше, чем в 40!</p>
+                    <div class="testimonial-author">— Дмитрий, 52 года</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section contact" id="contact">
+        <div class="container">
+            <h2 class="section-title">Свяжитесь со мной</h2>
+            <div class="contact-content">
+                <p>Готовы начать свой путь к лучшей версии себя? Свяжитесь со мной для консультации и составления индивидуальной программы тренировок.</p>
+                <div class="contact-info">
+                    <div class="contact-item">
+                        <div class="icon">
+                            <i class="fas fa-phone"></i>
+                        </div>
+                        <h4>Телефон</h4>
+                        <p><a href="tel:+79161234567">+7 (916) 123-45-67</a></p>
+                    </div>
+                    <div class="contact-item">
+                        <div class="icon">
+                            <i class="fab fa-telegram"></i>
+                        </div>
+                        <h4>Telegram</h4>
+                        <p><a href="https://t.me/yuriy_fitness">@yuriy_fitness</a></p>
+                    </div>
+                    <div class="contact-item">
+                        <div class="icon">
+                            <i class="fab fa-instagram"></i>
+                        </div>
+                        <h4>Instagram</h4>
+                        <p><a href="https://instagram.com/yuriy.fitness">@yuriy.fitness</a></p>
+                    </div>
+                    <div class="contact-item">
+                        <div class="icon">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                        <h4>Email</h4>
+                        <p><a href="mailto:yuriy@fitness-trainer.ru">yuriy@fitness-trainer.ru</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <button class="scroll-to-top" id="scrollToTop">
+        <i class="fas fa-chevron-up"></i>
+    </button>
+
+    <script>
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Scroll to top button
+        const scrollToTop = document.getElementById('scrollToTop');
+        
+        window.addEventListener('scroll', () => {
+            if (window.pageYOffset > 300) {
+                scrollToTop.classList.add('show');
+            } else {
+                scrollToTop.classList.remove('show');
+            }
+        });
+
+        scrollToTop.addEventListener('click', () => {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+
+        // Animate stats when they come into view
+        const stats = document.querySelectorAll('.stat-item h3');
+        const animateStats = (entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const stat = entry.target;
+                    const finalValue = parseInt(stat.textContent);
+                    let currentValue = 0;
+                    const increment = finalValue / 50;
+                    const timer = setInterval(() => {
+                        currentValue += increment;
+                        if (currentValue >= finalValue) {
+                            stat.textContent = finalValue + (stat.textContent.includes('+') ? '+' : '') + (stat.textContent.includes('%') ? '%' : '');
+                            clearInterval(timer);
+                        } else {
+                            stat.textContent = Math.floor(currentValue) + (stat.textContent.includes('+') ? '+' : '') + (stat.textContent.includes('%') ? '%' : '');
+                        }
+                    }, 50);
+                }
+            });
+        };
+
+        const observer = new IntersectionObserver(animateStats);
+        stats.forEach(stat => observer.observe(stat));
+
+        // Add parallax effect to hero section
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const hero = document.querySelector('.hero');
+            const heroContent = document.querySelector('.hero-content');
+            if (hero && heroContent) {
+                const heroHeight = hero.offsetHeight;
+                if (scrolled < heroHeight) {
+                    hero.style.transform = `translateY(${scrolled * 0.3}px)`;
+                    heroContent.style.transform = `translateY(${scrolled * 0.05}px)`;
+                    // Убираем opacity чтобы текст не исчезал
+                    // heroContent.style.opacity = 1 - (scrolled / heroHeight) * 1.5;
+                }
+            }
+        });
+    </script>
+</body>
+</html>

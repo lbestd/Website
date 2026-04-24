@@ -4,87 +4,157 @@
     <meta charset="UTF-8">
     <title>{{title}}</title>
     <style>
+        :root {
+            --gallery-bg: #0c1e35;
+            --nav-bg: rgba(0, 0, 0, 0.8);
+            --nav-hover: rgba(255, 255, 255, 0.2);
+            --border-radius: 0.5rem;
+            --transition: all 0.3s ease;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
 
         .menu-btn {
-
-          display: flex;           /* arrange spans (bars) in a column layout */
-          flex-direction: column;
-          justify-content: center;
-          padding:0;
-          gap: 0.75vh;
-          border: none;
-
-          background-color: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            border: none;
+            background-color: transparent;
+            cursor: pointer;
+            transition: var(--transition);
         }
+
+        .nav-button {
+            width: 3rem;
+            height: 3rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.3);
+            color: rgba(255, 255, 255, 0.8);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            font-size: 1.2rem;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .nav-button:hover {
+            background: rgba(0, 0, 0, 0.6);
+            border-color: rgba(255, 255, 255, 0.4);
+            color: rgba(255, 255, 255, 1);
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .nav-button:active {
+            transform: scale(0.95);
+        }
+        
+        @media screen and (max-width: 768px) {
+            .nav-button {
+                width: 3.5rem;
+                height: 3.5rem;
+                font-size: 1.5rem;
+                border-width: 1px;
+            }
+        }
+
+        .gallery-controls {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            gap: 1rem;
+            background: var(--nav-bg);
+            padding: 0.75rem;
+            border-radius: 2rem;
+            backdrop-filter: blur(15px);
+            box-shadow: var(--shadow);
+            z-index: 1000;
+        }
+        
+        .nav-control {
+            position: absolute;
+            z-index: 1001;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        
+        .floatdiv.show-controls .nav-control {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        .nav-control.prev {
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        
+        .nav-control.next {
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        
+        .nav-control.close {
+            top: 1rem;
+            right: 1rem;
+        }
+        
+        .nav-control.download {
+            top: 1rem;
+            left: 1rem;
+        }
+        
+        .nav-control.delete {
+            top: 4rem;
+            left: 1rem;
+        }
+        .nav-control.full {
+            top: 4rem;
+            left: 1rem;
+        }
+
         #menu-div {
             position: fixed;
-            top: 0;
-            left: 0;
-            margin: 0.7vh;
+            top: 1rem;
+            left: 1rem;
             z-index: 999;
-            opacity: 0.7;
-            width: fit-content;
-            height: fit-content;
-            border-radius: 10px;
+            background: var(--nav-bg);
+            border-radius: var(--border-radius);
+            padding: 0.5rem;
+            backdrop-filter: blur(10px);
+            box-shadow: var(--shadow);
         }
-           #left-div {
-            position: absolute;
-            top: 50%;
-            left: 0;
-            margin: 0.7vh;
-            z-index: 999;
-            opacity: 0.7;
-            width: fit-content;
-            height: fit-content;
-            border-radius: 10px;
-        }
-          #right-div {
-            position: absolute;
-            top: 50%;
-            right: 0;
-            margin: 0.7vh;
-            z-index: 999;
-            opacity: 0.7;
-            width: fit-content;
-            height: fit-content;
-            border-radius: 10px;
-        }
-        #close-div {
-            position: absolute;
-            top: 0;
-            right: 0;
-            margin: 0.7vh;
-            z-index: 999;
-            opacity: 0.7;
-            width: fit-content;
-            height: fit-content;
-        }
-        #trash-div {
-            position: absolute;
-            top: 0;
-            left: 0;
-            margin: 0.7vh;
-            z-index: 999;
-            opacity: 0.7;
-            width: fit-content;
-            height: fit-content;
-        }
-
-        #orig-div {
-            position: absolute;
-            top: 0;
-            left: 0;
-            margin: 0.7vh;
-            z-index: 999;
-            opacity: 0.7;
-            width: fit-content;
-            height: fit-content;
+        
+        @media screen and (max-width: 768px) {
+            #menu-div {
+                padding: 0.75rem;
+            }
+            
+            #menu-div .menu-btn {
+                width: 3rem;
+                height: 3rem;
+            }
+            
+            #menu-div img {
+                width: 2rem;
+                height: 2rem;
+            }
         }
 
         #admin {
             position: fixed;
-            top: 0;
-            right: 0;
+            top: 1rem;
+            right: 1rem;
             z-index: 999;
         }
 
@@ -128,27 +198,33 @@
             z-index: 15;
         }
         #root {
-            display: flex;
-            flex-wrap: wrap;
-            margin: 1% 1%;
-            justify-content: center;
-    }
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            padding: 1rem;
+            justify-items: center;
+        }
 
         .el {
-           width:fit-content;
-           min-height:64px;
-           padding: 1px 1px;
-           display:inline-block;
-           height: 165px;
-           overflow:hidden;
-           margin:1px;
-
+            width: 200px;
+            height: 200px;
+            overflow: hidden;
+            border-radius: var(--border-radius);
+            transition: var(--transition);
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .el:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         }
         #img {
-        object-fit: cover;
-        width: 165px;
-        height: 165px;
-        border-radius: 5px;
+            object-fit: cover;
+            width: 100%;
+            height: 100%;
+            border-radius: var(--border-radius);
+            transition: var(--transition);
         }
 
 
@@ -166,26 +242,68 @@
 
         .floatdiv {
             position: fixed;
-            border-radius: 5px;
-
-            display: grid;
-            height: fit-content;
-            width: fit-content;
-            background: gray;
-            padding: 2px;
-            top:0;
-            bottom: 0;
+            top: 0;
             left: 0;
-            right: 0;
-
-            margin: auto;
-            z-index: 10;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            cursor: pointer;
+        }
+        
+        .floatdiv.show-controls {
+            cursor: default;
         }
         .center-fit {
-            max-width: 100%;
-            max-height: 95vh;
-            margin: auto;
-            border-radius: 5px;
+            max-width: 90vw;
+            max-height: 80vh;
+            object-fit: contain;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            cursor: pointer;
+            position: relative;
+        }
+        
+        @media screen and (max-width: 768px) {
+            .center-fit {
+                max-width: 98vw;
+                max-height: 85vh;
+            }
+            
+            #root {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+                gap: 0.5rem;
+                padding: 0.5rem;
+            }
+            
+            .el {
+                width: 100%;
+                height: auto;
+                aspect-ratio: 1;
+                min-width: 140px;
+            }
+        }
+        
+        /* Невидимые зоны навигации */
+        .nav-zone {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            width: 50%;
+            cursor: pointer;
+            z-index: 5;
+        }
+        
+        .nav-zone.left {
+            left: 0;
+        }
+        
+        .nav-zone.right {
+            right: 0;
         }
 
 
@@ -196,11 +314,11 @@
 </head>
 
 <body>
-    <div id="menu-div">
-    <button class="menu-btn" onclick="location.href='/';">
-        <img src="gpng?png=folders" alt="Не загрузилось"  id="menu">
-    </button>
-    </div>
+    <nav id="menu-div" role="navigation" aria-label="Навигация по галерее">
+        <button class="menu-btn" onclick="location.href='/gallery';" aria-label="Вернуться к списку папок">
+            <img src="gpng?png=folders" alt="" role="presentation" id="menu">
+        </button>
+    </nav>
     <div id="admin">
     </div>
     <div id="root">
@@ -208,16 +326,16 @@
     </div>
 </body>
 <template id="post_template">
-        <div class="el">
-             <img src="" name="" alt="Не загрузилось"  id="img" style="width: 200px min-height:200px">
-        </div>
+        <article class="el">
+             <img src="" name="" alt="Изображение галереи" id="img" loading="lazy" decoding="async">
+        </article>
   </template>
 
 <template id="delete_template">
-            <div id="trash-div">
-            <button class="menu-btn"  onclick="">
-                <img src="gpng?png=trash" alt="Не загрузилось"  id="trash">
-            </button>
+            <div class="nav-button" style="position: absolute; top: 1rem; left: 1rem;">
+                <button class="nav-button" data-action="delete" aria-label="Удалить изображение">
+                    <img src="gpng?png=trash" alt="" role="presentation" id="trash">
+                </button>
             </div>
   </template>
 
@@ -230,36 +348,38 @@
   </template>
 
 <template id="gallery_template">
-        <div class="floatdiv">
-             <img src="" alt="Не загрузилось"  class="center-fit" style="width: 1024px min-height:768px">
-        <div id="left">
-            <div id="orig-div">
-            <button class="menu-btn" id="original" onclick="downloadImage()">
-                <img src="gpng?png=down" alt="Не загрузилось"  id="down">
-            </button>
+        <div class="floatdiv" role="dialog" aria-modal="true" aria-label="Просмотр изображения">
+            <img src="" alt="Полноразмерное изображение" class="center-fit">
+            
+            <!-- Кнопки по периметру -->
+            <div class="nav-control prev">
+                <button class="nav-button" data-action="previous" aria-label="Предыдущее изображение">
+                    ‹
+                </button>
             </div>
-            <div id="left-div">
-            <button class="menu-btn" onclick="">
-                <img src="gpng?png=left" alt="Не загрузилось"  id="lefti">
-            </button>
+            
+            <div class="nav-control next">
+                <button class="nav-button" data-action="next" aria-label="Следующее изображение">
+                    ›
+                </button>
             </div>
-
-        </div>
-        <div id="right">
-
-            <div id="close-div">
-            <button class="menu-btn"  onclick="">
-                <img src="gpng?png=close" alt="Не загрузилось"  id="close">
-            </button>
+            
+            <div class="nav-control close">
+                <button class="nav-button" data-action="close" aria-label="Закрыть галерею">
+                    ×
+                </button>
             </div>
-            <div id="right-div">
-            <button class="menu-btn" onclick="">
-                <img src="gpng?png=right" alt="Не загрузилось"  id="righti">
-            </button>
+            <div class="nav-control full">
+                <button class="nav-button" data-action="full" aria-label="Полный размер">
+                    F
+                </button>
             </div>
-
-        </div>
-
+            
+            <div class="nav-control download">
+                <button class="nav-button" data-action="download" aria-label="Скачать изображение">
+                    ↓
+                </button>
+            </div>
         </div>
 </template>
 
@@ -282,69 +402,122 @@
       }
       return null;
     }
-    function readMore(event) {
-      const main = document.getElementById('root')
-      delelems = document.getElementsByClassName('floatdiv')
-
-
-      if ( delelems.length != 0){
-        photourl = delelems[0].querySelector('img').src
+    function handleGalleryAction(action, target) {
+        const galleryModal = document.querySelector('.floatdiv');
+        if (!galleryModal) return;
+        
+        const img = galleryModal.querySelector('img');
+        const photourl = img.src;
         const galParams = new URLSearchParams(photourl);
         const photoinurl = galParams.get('photo');
         const currentIndex = allphotos.indexOf(photoinurl);
-        if (event.srcElement.id == 'trash'){
-            deleteurl = photourl.replace('urla','urldel')
-            var previevelement = document.getElementsByName(photoinurl);
-            var parentevelement = previevelement[0].parentNode;
-
-            const ditemplate = document.getElementById('deleted_image')
-            parentevelement.insertBefore(ditemplate.content.cloneNode(true), parentevelement.firstChild);
-            previevelement[0].style.opacity= '0.5';
-            fetch(deleteurl)
+        
+        switch(action) {
+            case 'previous':
+                const prevIndex = (currentIndex - 1 + allphotos.length) % allphotos.length;
+                const prevPhoto = allphotos[prevIndex];
+                img.src = generateurl(prevPhoto, 'no');
+                showControls(); // Show controls after navigation
+                break;
+            case 'full':
+                img.src = generateurl(allphotos[currentIndex], 'orig');
+                showControls(); // Show controls after navigation
+                break;
+            case 'next':
+                const nextIndex = (currentIndex + 1) % allphotos.length;
+                const nextPhoto = allphotos[nextIndex];
+                img.src = generateurl(nextPhoto, 'no');
+                showControls(); // Show controls after navigation
+                break;
+            case 'download':
+                const downloadUrl = new URL(photourl);
+                downloadUrl.searchParams.set('prev', 'orig');
+                downloadImage(downloadUrl.toString());
+                showControls(); // Show controls after action
+                break;
+            case 'close':
+                hideControls(); // Hide controls before closing
+                galleryModal.remove();
+                break;
+            case 'delete':
+                deleteCurrentImage(photoinurl, photourl);
+                showControls(); // Show controls after deletion
+                break;
+        }
+    }
+    
+    function deleteCurrentImage(photoinurl, photourl) {
+        const deleteurl = photourl.replace('urla', 'urldel');
+        const previewElement = document.getElementsByName(photoinurl)[0];
+        const parentElement = previewElement.parentNode;
+        
+        const deleteTemplate = document.getElementById('deleted_image');
+        parentElement.insertBefore(deleteTemplate.content.cloneNode(true), parentElement.firstChild);
+        previewElement.style.opacity = '0.5';
+        fetch(deleteurl);
+        
+        // Move to next image after deletion
+        handleGalleryAction('next');
+    }
+    
+    let hideControlsTimer = null;
+    
+    function showControls() {
+        const modal = document.querySelector('.floatdiv');
+        if (modal) {
+            modal.classList.add('show-controls');
+            
+            // Clear existing timer
+            if (hideControlsTimer) {
+                clearTimeout(hideControlsTimer);
             }
-
-        if (event.srcElement.id == 'right' || event.srcElement.id == 'righti' || event.srcElement.id == 'trash'){
-            const nextIndex = (currentIndex + 1) % allphotos.length;
-            nextphoto = allphotos[nextIndex];
-            const nextphotourl = generateurl(nextphoto,'no')
-            delelems[0].querySelector('img').src = nextphotourl
-
+            
+            // Set new timer to hide controls
+            hideControlsTimer = setTimeout(() => {
+                modal.classList.remove('show-controls');
+            }, 2500); // Hide after 2.5 seconds
         }
-        else if (event.srcElement.id == 'left' || event.srcElement.id == 'lefti') {
-            const nextIndex = (currentIndex - 1) % allphotos.length;
-            nextphoto = allphotos[nextIndex];
-            const nextphotourl = generateurl(nextphoto,'no')
-            delelems[0].querySelector('img').src = nextphotourl
-
+    }
+    
+    function hideControls() {
+        const modal = document.querySelector('.floatdiv');
+        if (modal) {
+            modal.classList.remove('show-controls');
         }
-
-        else{
-        for (var i = delelems.length - 1; i >= 0; --i) {
-          delelems[i].remove();
-        }}}
-
-      if (event.srcElement.id == 'img'){
-      imgelement = event.srcElement
-      const main = document.getElementById('root')
-      const postNode = createview(imgelement.src)
-      console.log(postNode)
-      if (imgelement.style.opacity == '0.5'){
-        imgelement.style.opacity= '1'
-        imgelement.parentNode.firstElementChild.remove()
-        deleteurl = imgelement.src.replace('urla','urldel')
-        fetch(deleteurl)
-      }
-          const mode = getCookie('mode');
-          if (mode === '1') {
-            const rightdiv = postNode.firstElementChild.children[2]
-            const dltemplate = document.getElementById('delete_template')
-            rightdiv.insertBefore(dltemplate.content.cloneNode(true), rightdiv.firstChild);
-          }
-
-
-      main.append(postNode)
-
-      }
+        if (hideControlsTimer) {
+            clearTimeout(hideControlsTimer);
+            hideControlsTimer = null;
+        }
+    }
+    
+    function openImageModal(imgElement) {
+        const main = document.getElementById('root');
+        const modalNode = createview(imgElement.src);
+        
+        if (imgElement.style.opacity === '0.5') {
+            // Restore deleted image
+            imgElement.style.opacity = '1';
+            imgElement.parentNode.firstElementChild.remove();
+            const deleteurl = imgElement.src.replace('urla', 'urldel');
+            fetch(deleteurl);
+        }
+        
+        const mode = getCookie('mode');
+        if (mode === '1') {
+            const deleteControl = document.createElement('div');
+            deleteControl.className = 'nav-control delete';
+            deleteControl.innerHTML = `
+                <button class="nav-button" data-action="delete" aria-label="Удалить изображение">
+                    🗑
+                </button>
+            `;
+            modalNode.firstElementChild.appendChild(deleteControl);
+        }
+        
+        main.append(modalNode);
+        
+        // Show controls initially
+        setTimeout(showControls, 100);
     }
 
 
@@ -378,26 +551,38 @@
     }
 
     function composePost(postData) {
-      if (!postData) return
-      urlsrc = generateurl(postData,'yes')
-      const template = document.getElementById('post_template')
-      const post = template.content.cloneNode(true)
-      post.querySelector('img').name = postData
-      post.querySelector('img').src = urlsrc
-      return post
+        if (!postData) return;
+        
+        const urlsrc = generateurl(postData, 'yes');
+        const template = document.getElementById('post_template');
+        const post = template.content.cloneNode(true);
+        const img = post.querySelector('img');
+        
+        img.name = postData;
+        img.dataset.src = urlsrc; // For lazy loading
+        img.alt = `Изображение: ${postData}`;
+        
+        // Implement lazy loading
+        if (typeof imageObserver !== 'undefined') {
+            imageObserver.observe(img);
+        } else {
+            img.src = urlsrc;
+        }
+        
+        return post;
     }
 
     function createview(imgdata) {
-      if (!imgdata) return
-      const template = document.getElementById('gallery_template')
-      const post = template.content.cloneNode(true)
-      const imggallery = new URL(imgdata);
-      const imgorig = new URL(imgdata);
-      imggallery.searchParams.set('prev', 'no');
-      imgorig.searchParams.set('prev', 'orig');
-      post.querySelector('img').src = imggallery;
-      post.querySelector('#original').setAttribute('onclick',"downloadImage('"+imgorig+ "')");
-      return post
+        if (!imgdata) return;
+        
+        const template = document.getElementById('gallery_template');
+        const post = template.content.cloneNode(true);
+        const imggallery = new URL(imgdata);
+        
+        imggallery.searchParams.set('prev', 'no');
+        post.querySelector('img').src = imggallery.toString();
+        
+        return post;
     }
 
     function downloadImage(imageUrl) {
@@ -461,12 +646,132 @@
       }
     }
 
+    // Intersection Observer for lazy loading
+    const imageObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const img = entry.target;
+                if (img.dataset.src) {
+                    img.src = img.dataset.src;
+                    delete img.dataset.src;
+                    imageObserver.unobserve(img);
+                }
+            }
+        });
+    }, { rootMargin: '50px' });
+    
+    // Modern event delegation with data attributes
+    document.addEventListener('click', (e) => {
+        const target = e.target;
+        const galleryModal = document.querySelector('.floatdiv');
+        
+        // Check for action buttons
+        const action = target.dataset?.action || target.closest('[data-action]')?.dataset?.action;
+        if (action) {
+            handleGalleryAction(action, target);
+            return;
+        }
+        
+        // Open image modal if clicking on gallery image
+        if (target.id === 'img' && !galleryModal) {
+            openImageModal(target);
+            return;
+        }
+        
+        // Handle gallery modal interactions
+        if (galleryModal) {
+            const modalImg = galleryModal.querySelector('.center-fit');
+            
+            // Click outside image to close
+            if (!modalImg.contains(target) && !target.closest('.nav-control')) {
+                handleGalleryAction('close');
+            }
+        }
+    });
+    
+<!--    // Touch/Swipe navigation-->
+<!--    let touchStartX = 0;-->
+<!--    let touchStartY = 0;-->
+<!--    let touchEndX = 0;-->
+<!--    let touchEndY = 0;-->
+<!--    -->
+<!--    document.addEventListener('touchstart', (e) => {-->
+<!--        const galleryModal = document.querySelector('.floatdiv');-->
+<!--        if (!galleryModal) return;-->
+<!--        -->
+<!--        touchStartX = e.changedTouches[0].screenX;-->
+<!--        touchStartY = e.changedTouches[0].screenY;-->
+<!--        showControls(); // Show controls on touch-->
+<!--    }, { passive: true });-->
+<!--    -->
+<!--    document.addEventListener('touchend', (e) => {-->
+<!--        const galleryModal = document.querySelector('.floatdiv');-->
+<!--        if (!galleryModal) return;-->
+<!--        -->
+<!--        touchEndX = e.changedTouches[0].screenX;-->
+<!--        touchEndY = e.changedTouches[0].screenY;-->
+<!--        handleSwipe();-->
+<!--    }, { passive: true });-->
+    
+    // Mouse movement detection
+    document.addEventListener('mousemove', (e) => {
+        const galleryModal = document.querySelector('.floatdiv');
+        if (galleryModal) {
+            showControls();
+        }
+    }, { passive: true });
+    
+    function handleSwipe() {
+        const deltaX = touchEndX - touchStartX;
+        const deltaY = touchEndY - touchStartY;
+        const minSwipeDistance = 50;
+        
+        // Horizontal swipe is stronger than vertical
+        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
+            if (deltaX > 0) {
+                handleGalleryAction('previous'); // Swipe right = previous
+            } else {
+                handleGalleryAction('next'); // Swipe left = next
+            }
+        }
+        // Vertical swipe down to close
+        else if (deltaY > minSwipeDistance && Math.abs(deltaY) > Math.abs(deltaX)) {
+            handleGalleryAction('close');
+        }
+    }
+    
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+        const galleryModal = document.querySelector('.floatdiv');
+        if (!galleryModal) return;
+        
+        switch(e.key) {
+            case 'ArrowLeft':
+                handleGalleryAction('previous');
+                break;
+            case 'ArrowRight':
+                handleGalleryAction('next');
+                break;
+            case 'Escape':
+                handleGalleryAction('close');
+                break;
+            case 'ArrowUp':
+                handleGalleryAction('full');
+                break;
+            case 'Delete':
+                if (getCookie('mode') === '1') {
+                    handleGalleryAction('delete');
+                }
+                break;
+        }
+    });
+    
+    // Initialize
     (() => {
-      window.onload = fetchPosts();
-      window.addEventListener('scroll', throttle(checkPosition))
-      window.addEventListener('resize', throttle(checkPosition))
-      window.addEventListener('click', readMore);
-    })()
+        window.addEventListener('load', fetchPosts);
+        window.addEventListener('scroll', throttle(checkPosition, 100));
+        window.addEventListener('resize', throttle(checkPosition, 100));
+    })();
 
 </script>
 </html>

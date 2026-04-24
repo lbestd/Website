@@ -1,0 +1,1585 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Косынка</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a5e3a;
+            font-family: system-ui, -apple-system, sans-serif;
+            overflow: hidden;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        #topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px 4px;
+            flex-shrink: 0;
+            background: rgba(0,0,0,0.18);
+        }
+        #topbar a {
+            color: #ffffffcc;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 500;
+            padding: 4px 8px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.1);
+            transition: background 0.15s;
+        }
+        #topbar a:hover { background: rgba(255,255,255,0.2); }
+        .stat {
+            color: #ffffffdd;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        #subbar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 12px 4px;
+            flex-shrink: 0;
+            gap: 20px;
+        }
+        #btnUndo {
+            background: rgba(0,0,0,0.35);
+            color: #ffffffcc;
+            border: none;
+            border-radius: 8px;
+            padding: 7px 18px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.15s, opacity 0.15s;
+        }
+        #btnUndo:hover:not(:disabled) { background: rgba(0,0,0,0.55); }
+        #btnUndo:disabled { opacity: 0.35; cursor: default; }
+        #btnNew {
+            background: rgba(0,0,0,0.35);
+            color: #ffffffcc;
+            border: none;
+            border-radius: 8px;
+            padding: 5px 14px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        #btnNew:hover { background: rgba(0,0,0,0.55); }
+        #controls { display: contents; }
+        #gameCanvas {
+            flex: 1;
+            display: block;
+            touch-action: none;
+        }
+        .overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.65);
+            backdrop-filter: blur(6px);
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            flex-direction: column;
+            gap: 18px;
+        }
+        .overlay.show { display: flex; }
+        .overlay-box {
+            background: rgba(20,60,35,0.97);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 20px;
+            padding: 32px 40px;
+            text-align: center;
+            color: white;
+            min-width: 240px;
+        }
+        .overlay-box h2 { font-size: 26px; margin-bottom: 10px; }
+        .overlay-box p { font-size: 16px; opacity: 0.8; margin-bottom: 22px; }
+        .overlay-btn {
+            background: linear-gradient(135deg, #2d8a50, #1a5e3a);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 28px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.15s;
+            margin: 4px;
+        }
+        .overlay-btn:hover { opacity: 0.85; }
+        .diff-row {
+            display: flex; gap: 8px; justify-content: center; margin-bottom: 6px;
+        }
+        .diff-btn {
+            background: rgba(255,255,255,0.12);
+            color: #ffffffcc;
+            border: 1.5px solid rgba(255,255,255,0.2);
+            border-radius: 10px;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+            font-family: inherit;
+        }
+        .diff-btn:hover { background: rgba(255,255,255,0.22); }
+        .diff-btn.sel {
+            background: rgba(255,255,255,0.28);
+            border-color: rgba(255,255,255,0.7);
+            color: #fff;
+            font-weight: 700;
+        }
+        #startStatus { font-size: 14px; opacity: 0.7; min-height: 20px; margin-top: -8px; }
+        #btnFullscreen {
+            background: rgba(0,0,0,0.35);
+            color: #ffffffcc;
+            border: none;
+            border-radius: 8px;
+            padding: 5px 9px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.15s;
+            line-height: 1;
+        }
+        #btnFullscreen:hover { background: rgba(0,0,0,0.55); }
+        @media screen and (max-height: 480px) and (orientation: portrait) {
+            #topbar { padding: 3px 8px 2px; }
+            #topbar a { font-size: 12px; padding: 3px 6px; }
+            .stat { font-size: 12px; }
+            #subbar { padding: 2px 8px; gap: 6px; }
+            #btnUndo, #btnNew, #btnFullscreen { font-size: 11px; padding: 3px 8px; }
+        }
+        @media screen and (orientation: landscape) and (max-height: 500px) {
+            body { flex-direction: row; }
+            #controls {
+                display: flex;
+                flex-direction: column;
+                width: 100px;
+                flex-shrink: 0;
+                background: rgba(0,0,0,0.22);
+                padding: 8px 7px;
+                gap: 6px;
+            }
+            #topbar {
+                flex-direction: column;
+                padding: 0;
+                background: none;
+                gap: 5px;
+                align-items: stretch;
+            }
+            #topbar a { font-size: 11px; padding: 5px 4px; text-align: center; }
+            .stat { font-size: 11px; text-align: center; }
+            #subbar {
+                flex-direction: column;
+                flex: 1;
+                padding: 0;
+                justify-content: space-between;
+                align-items: stretch;
+            }
+            #btnUndo, #btnNew { font-size: 12px; padding: 8px 4px; white-space: normal; line-height: 1.2; }
+            #btnFullscreen { font-size: 15px; padding: 5px; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="controls">
+<div id="topbar">
+    <a href="/">← Меню</a>
+    <span class="stat" id="scoreLabel">Очки: 0</span>
+    <span class="stat" id="movesLabel">Ходы: 0</span>
+    <button id="btnFullscreen" title="Полный экран">⛶</button>
+</div>
+<div id="subbar">
+    <button id="btnUndo" disabled>↩ Отменить</button>
+    <button id="btnNew">Новая игра</button>
+</div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<!-- Start overlay -->
+<div class="overlay show" id="startOverlay">
+    <div class="overlay-box">
+        <h2>🃏 Косынка</h2>
+        <div class="diff-row">
+            <button class="diff-btn sel" data-d="easy">Лёгкий</button>
+            <button class="diff-btn" data-d="medium">Средний</button>
+            <button class="diff-btn" data-d="hard">Сложный</button>
+        </div>
+        <p id="diffDesc">Draw-1 · проверенный расклад</p>
+        <p id="startStatus"></p>
+        <button class="overlay-btn" id="btnStart" onclick="startGame()">Начать игру</button>
+    </div>
+</div>
+
+<!-- Win overlay -->
+<div class="overlay" id="winOverlay">
+    <div class="overlay-box">
+        <h2>Победа! 🎉</h2>
+        <p id="winMsg">Очки: 0</p>
+        <button class="overlay-btn" onclick="newGame()">Заново</button>
+    </div>
+</div>
+
+<script>
+'use strict';
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+const SUITS = ['♠','♥','♦','♣'];
+const SUIT_COLORS = { '♠':'#1a1a1a', '♥':'#c41e3a', '♦':'#c41e3a', '♣':'#1a1a1a' };
+const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const RANK_VAL = {};
+RANKS.forEach((r, i) => RANK_VAL[r] = i + 1);
+
+// ─── Game state ───────────────────────────────────────────────────────────────
+let stock = [], waste = [], foundations = [[], [], [], []], tableau = [];
+let score = 0, moveCount = 0;
+let selected = null; // {source, col, idx, cards}
+let undoStack = [];
+let pendingDeal = null;
+let difficulty = 'easy'; // 'easy' | 'medium' | 'hard'
+let drawCount  = 1;       // 1 or 3
+let solverWorker = null;
+let touchDrag   = null;  // {srcHit, cards, x, y}
+let touchOrigin = null;  // {x, y, time}
+
+// ─── Card helpers ─────────────────────────────────────────────────────────────
+function isRed(card) { return card.suit === '♥' || card.suit === '♦'; }
+function rankIndex(card) { return RANK_VAL[card.rank]; }
+function cloneCard(c) { return { rank: c.rank, suit: c.suit, faceUp: c.faceUp }; }
+
+// ─── Rules ────────────────────────────────────────────────────────────────────
+function canFoundation(card, pile) {
+    if (pile.length === 0) return card.rank === 'A';
+    const top = pile[pile.length - 1];
+    return card.suit === top.suit && rankIndex(card) === rankIndex(top) + 1;
+}
+
+function canTableau(card, pile) {
+    if (pile.length === 0) return card.rank === 'K';
+    const top = pile[pile.length - 1];
+    return isRed(card) !== isRed(top) && rankIndex(card) === rankIndex(top) - 1;
+}
+
+// ─── Deep clone of full state ─────────────────────────────────────────────────
+function cloneState(st, wa, fo, ta) {
+    return {
+        stock:       st.map(cloneCard),
+        waste:       wa.map(cloneCard),
+        foundations: fo.map(a => a.map(cloneCard)),
+        tableau:     ta.map(a => a.map(cloneCard)),
+        score,
+        moveCount
+    };
+}
+
+function restoreState(s) {
+    stock       = s.stock;
+    waste       = s.waste;
+    foundations = s.foundations;
+    tableau     = s.tableau;
+    score       = s.score;
+    moveCount   = s.moveCount;
+}
+
+// ─── Solver Web Worker (inlined) ──────────────────────────────────────────────
+// Thoughtful Klondike DFS with mutable state + explicit undo.
+// Zero array allocations in hot path → no GC pressure → reliable 3-second budget.
+const WORKER_SRC = `
+const SI={'♠':0,'♥':1,'♦':2,'♣':3};
+const RV={'A':1,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'J':11,'Q':12,'K':13};
+function cid(c){return SI[c.suit]*13+RV[c.rank]-1;}
+function crk(id){return(id%13)+1;}
+function cst(id){return(id/13)|0;}
+function crd(id){const s=(id/13)|0;return s===1||s===2;} // red: ♥=1,♦=2
+
+// Pre-allocated 200-byte key buffer — re-used every call, never reallocated
+const KBUF=new Uint8Array(200);
+
+function solve(initStock,initTab,deadline){
+  // Mutable game state — modified in-place, undone after each recursive branch
+  const tab=initTab.map(c=>c.map(cid));  // 7 cols [bottom..top]
+  const found=[0,0,0,0];
+  const waste=[];
+  const stock=initStock.map(cid);        // [bottom..top], last = first to draw
+  let rec=0;
+
+  const visited=new Set();
+  let nodes=0;
+
+  function skey(){
+    let p=0;
+    KBUF[p++]=found[0];KBUF[p++]=found[1];KBUF[p++]=found[2];KBUF[p++]=found[3];
+    KBUF[p++]=255;
+    for(let c=0;c<7;c++){for(let i=0;i<tab[c].length;i++)KBUF[p++]=tab[c][i];KBUF[p++]=254;}
+    KBUF[p++]=rec;KBUF[p++]=waste.length;
+    for(let i=0;i<waste.length;i++)KBUF[p++]=waste[i];
+    for(let i=stock.length-1;i>=0;i--)KBUF[p++]=stock[i];
+    return String.fromCharCode(...KBUF.subarray(0,p));
+  }
+
+  function dfs(){
+    if(Date.now()>deadline||++nodes>300000)return'T';
+    if(found[0]===13&&found[1]===13&&found[2]===13&&found[3]===13)return true;
+    const k=skey();
+    if(visited.has(k))return false;
+    visited.add(k);
+
+    const wt=waste.length?waste[waste.length-1]:-1;
+    let r;
+
+    // 1. Waste top → foundation
+    if(wt>=0&&crk(wt)===found[cst(wt)]+1){
+      const s=cst(wt);waste.pop();found[s]++;
+      r=dfs();
+      found[s]--;waste.push(wt);
+      if(r!==false)return r;
+    }
+    // 2. Tableau tops → foundation
+    for(let c=0;c<7;c++){
+      if(!tab[c].length)continue;
+      const id=tab[c][tab[c].length-1];
+      if(crk(id)===found[cst(id)]+1){
+        const s=cst(id);tab[c].pop();found[s]++;
+        r=dfs();
+        found[s]--;tab[c].push(id);
+        if(r!==false)return r;
+      }
+    }
+    // 3. Tableau → tableau (undo: copy indices back, no allocation)
+    for(let c=0;c<7;c++){
+      for(let x=0;x<tab[c].length;x++){
+        const id=tab[c][x];const rk=crk(id);const rd=crd(id);
+        for(let d=0;d<7;d++){
+          if(d===c)continue;
+          const dt=tab[d].length?tab[d][tab[d].length-1]:-1;
+          const ok=dt<0?(rk===13&&x>0):(rd!==crd(dt)&&rk===crk(dt)-1);
+          if(!ok)continue;
+          const cnt=tab[c].length-x, dBase=tab[d].length;
+          for(let i=x;i<x+cnt;i++)tab[d].push(tab[c][i]);
+          tab[c].length=x;
+          r=dfs();
+          for(let i=0;i<cnt;i++)tab[c].push(tab[d][dBase+i]);
+          tab[d].length=dBase;
+          if(r!==false)return r;
+        }
+      }
+    }
+    // 4. Waste top → tableau
+    if(wt>=0){
+      const rk=crk(wt),rd=crd(wt);
+      for(let d=0;d<7;d++){
+        const dt=tab[d].length?tab[d][tab[d].length-1]:-1;
+        const ok=dt<0?(rk===13):(rd!==crd(dt)&&rk===crk(dt)-1);
+        if(!ok)continue;
+        waste.pop();tab[d].push(wt);
+        r=dfs();
+        tab[d].pop();waste.push(wt);
+        if(r!==false)return r;
+      }
+    }
+    // 5. Draw from stock
+    if(stock.length){
+      const c=stock.pop();waste.push(c);
+      r=dfs();
+      waste.pop();stock.push(c);
+      if(r!==false)return r;
+    }else if(waste.length&&rec<2){
+      // Recycle: flip waste→stock. One allocation here (rare, max 2×/game)
+      const snap=waste.slice();
+      const n=snap.length;
+      for(let i=n-1;i>=0;i--)stock.push(snap[i]); // stock top = old waste bottom
+      waste.length=0;rec++;
+      r=dfs();
+      rec--;waste.length=0;stock.length=0;
+      for(let i=0;i<n;i++)waste.push(snap[i]); // restore
+      if(r!==false)return r;
+    }
+    return false;
+  }
+
+  return dfs()===true;
+}
+function mk(){const d=[];for(const s of['♠','♥','♦','♣'])for(const r of['A','2','3','4','5','6','7','8','9','10','J','Q','K'])d.push({rank:r,suit:s,faceUp:false});return d;}
+function sh(a){for(let i=a.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[a[i],a[j]]=[a[j],a[i]];}return a;}
+function dl(deck){const tab=[];let i=0;for(let c=0;c<7;c++){const col=[];for(let r=0;r<=c;r++){col.push({rank:deck[i].rank,suit:deck[i].suit,faceUp:r===c});i++;}tab.push(col);}const st=[];while(i<52){st.push({rank:deck[i].rank,suit:deck[i].suit,faceUp:false});i++;}return{stock:st,tableau:tab};}
+self.onmessage=function(e){
+  try{
+    if(!e.data.verify){
+      self.postMessage({...dl(sh(mk())),verified:false});
+      return;
+    }
+    const globalEnd=Date.now()+2800;
+    let last=null;
+    for(let a=0;a<60;a++){
+      const now=Date.now();
+      if(now>=globalEnd-20)break;
+      last=dl(sh(mk()));
+      // Cap each attempt at 450ms so cold-JIT first run can't burn the whole budget
+      const attemptEnd=Math.min(globalEnd, now+450);
+      if(solve(last.stock,last.tableau,attemptEnd)){
+        self.postMessage({...last,verified:true});
+        return;
+      }
+    }
+    self.postMessage({...(last||dl(sh(mk()))),verified:false});
+  }catch(_){
+    self.postMessage({...dl(sh(mk())),verified:false});
+  }
+};
+`;
+
+// ─── Prepare deal via Worker ───────────────────────────────────────────────────
+function prepareDeal(verify, cb) {
+    if (solverWorker) { solverWorker.terminate(); solverWorker = null; }
+    const blob = new Blob([WORKER_SRC], { type: 'application/javascript' });
+    const url  = URL.createObjectURL(blob);
+    solverWorker = new Worker(url);
+    solverWorker.onmessage = e => {
+        URL.revokeObjectURL(url); solverWorker = null;
+        cb(e.data);
+    };
+    solverWorker.postMessage({ verify });
+}
+
+// ─── Deck & dealing ───────────────────────────────────────────────────────────
+function makeDeck() {
+    const deck = [];
+    for (const s of SUITS)
+        for (const r of RANKS)
+            deck.push({ rank: r, suit: s, faceUp: false });
+    return deck;
+}
+
+function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = (Math.random() * (i + 1)) | 0;
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
+function dealDeck(deck) {
+    const tab = [];
+    let idx = 0;
+    for (let c = 0; c < 7; c++) {
+        const col = [];
+        for (let r = 0; r <= c; r++) {
+            col.push({ rank: deck[idx].rank, suit: deck[idx].suit, faceUp: r === c });
+            idx++;
+        }
+        tab.push(col);
+    }
+    const st = [];
+    while (idx < 52) {
+        st.push({ rank: deck[idx].rank, suit: deck[idx].suit, faceUp: false });
+        idx++;
+    }
+    return { stock: st, tableau: tab };
+}
+
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+function initGame(dealData) {
+    stock       = dealData.stock;
+    waste       = [];
+    foundations = [[], [], [], []];
+    tableau     = dealData.tableau;
+    score       = 0;
+    moveCount   = 0;
+    selected    = null;
+    undoStack   = [];
+    updateUI();
+    render();
+}
+
+const DIFF_DESC = {
+    easy:   'Draw-1 · проверенный расклад',
+    medium: 'Draw-1 · случайный расклад',
+    hard:   'Draw-3 · случайный расклад',
+};
+
+function setDifficulty(d) {
+    difficulty = d;
+    drawCount  = d === 'hard' ? 3 : 1;
+    document.querySelectorAll('.diff-btn').forEach(b =>
+        b.classList.toggle('sel', b.dataset.d === d));
+    document.getElementById('diffDesc').textContent = DIFF_DESC[d];
+    if (d === 'easy') {
+        // Don't restart if already searching or deal already ready
+        if (!solverWorker && !pendingDeal) triggerWorker();
+    } else {
+        // Cancel any running worker, enable button immediately
+        if (solverWorker) { solverWorker.terminate(); solverWorker = null; }
+        pendingDeal = null;
+        document.getElementById('startStatus').textContent = '';
+        document.getElementById('btnStart').disabled = false;
+    }
+}
+
+function triggerWorker() {
+    // Provide an immediate random deal so the button is always clickable
+    pendingDeal = dealDeck(shuffle(makeDeck()));
+    document.getElementById('startStatus').textContent = 'Проверяем расклад…';
+    prepareDeal(true, data => {
+        pendingDeal = data; // upgrade to verified deal if solver finished first
+        document.getElementById('startStatus').textContent =
+            data.verified ? 'Расклад найден ✓' : 'Не найден — случайный расклад';
+    });
+    if (solverWorker) {
+        solverWorker.onerror = () => {
+            solverWorker = null;
+            document.getElementById('startStatus').textContent = 'Не найден — случайный расклад';
+        };
+    }
+}
+
+function newGame() {
+    document.getElementById('winOverlay').classList.remove('show');
+    document.getElementById('startOverlay').classList.add('show');
+    // Re-trigger based on current difficulty
+    setDifficulty(difficulty);
+}
+
+function startGame() {
+    if (solverWorker) { solverWorker.terminate(); solverWorker = null; }
+    document.getElementById('startOverlay').classList.remove('show');
+    if (!pendingDeal) {
+        pendingDeal = dealDeck(shuffle(makeDeck()));
+    }
+    initGame(pendingDeal);
+    pendingDeal = null;
+}
+
+// ─── UI update ────────────────────────────────────────────────────────────────
+function updateUI() {
+    document.getElementById('scoreLabel').textContent = 'Очки: ' + score;
+    document.getElementById('movesLabel').textContent = 'Ходы: ' + moveCount;
+    document.getElementById('btnUndo').disabled = undoStack.length === 0;
+}
+
+// ─── Undo ─────────────────────────────────────────────────────────────────────
+function pushUndo() {
+    if (undoStack.length >= 100) undoStack.shift();
+    undoStack.push(cloneState(stock, waste, foundations, tableau));
+}
+
+function doUndo() {
+    if (undoStack.length === 0) return;
+    restoreState(undoStack.pop());
+    selected = null;
+    updateUI();
+    render();
+}
+
+// ─── Canvas & layout ──────────────────────────────────────────────────────────
+const canvas = document.getElementById('gameCanvas');
+const ctx    = canvas.getContext('2d');
+
+let CW, CH, PAD, OFFSET_X, OVERLAP_DOWN, OVERLAP_UP, BOARD_Y, DPR;
+let _cardBackImg = null, _cbCW = 0, _cbCH = 0, _cbDPR = 0;
+
+function resize() {
+    _cardBackImg = null; // invalidate card-back cache on any resize
+    DPR = window.devicePixelRatio || 1;
+    const W = canvas.clientWidth;
+    const H = canvas.clientHeight;
+    canvas.width  = W * DPR;
+    canvas.height = H * DPR;
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+    const isLandscape = window.innerWidth > window.innerHeight;
+    const cwByWidth  = Math.floor(W / 8);
+    // Landscape: canvas has full height (sidebar handles controls); portrait: subtract bar heights
+    const hBudget    = Math.min(H, window.innerHeight) - (isLandscape ? 8 : 60);
+    const cwByHeight = Math.floor((hBudget - 36) / (isLandscape ? 6.2 : 5.0));
+    CW           = Math.max(22, Math.min(cwByWidth, cwByHeight));
+    CH           = Math.round(CW * 1.4);
+    PAD          = Math.max(2, Math.min(Math.floor((W - 7 * CW) / 8), Math.round(CW * 0.25)));
+    const sidebarW = (isLandscape && window.innerHeight <= 500) ? 100 : 0;
+    OFFSET_X     = Math.max(0, Math.floor((W - sidebarW - 7 * CW - 8 * PAD) / 2));
+    OVERLAP_DOWN = Math.round(CH * 0.28);
+    OVERLAP_UP   = Math.round(CH * 0.38);
+    BOARD_Y      = CH + 14;
+    render();
+}
+
+function colX(c) { return OFFSET_X + PAD + c * (CW + PAD); }
+
+function recalcOverlaps() {
+    const defDown = Math.round(CH * 0.28);
+    const defUp   = Math.round(CH * 0.38);
+    let maxLen = 0;
+    for (const col of tableau) if (col.length > maxLen) maxLen = col.length;
+    if (maxLen < 2) { OVERLAP_DOWN = defDown; OVERLAP_UP = defUp; return; }
+    const avail = (window.innerWidth > window.innerHeight ? window.innerHeight : canvas.clientHeight)
+                  - BOARD_Y - CH - 4;
+    if (defUp * (maxLen - 1) <= avail) { OVERLAP_DOWN = defDown; OVERLAP_UP = defUp; return; }
+    const ov = Math.max(5, Math.floor(avail / (maxLen - 1)));
+    OVERLAP_DOWN = Math.min(defDown, ov);
+    OVERLAP_UP   = Math.min(defUp,   ov);
+}
+
+// ─── Drawing helpers ──────────────────────────────────────────────────────────
+function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.arcTo(x + w, y,     x + w, y + r,     r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+    ctx.lineTo(x + r, y + h);
+    ctx.arcTo(x,     y + h, x,     y + h - r, r);
+    ctx.lineTo(x,     y + r);
+    ctx.arcTo(x,     y,     x + r,     y,     r);
+    ctx.closePath();
+}
+
+const SHADOW_ON  = { c: 'rgba(0,0,0,0.4)', b: 7,  o: 3 };
+const SHADOW_OFF = { c: 'transparent',     b: 0,  o: 0 };
+function shadow(on) {
+    // Skip expensive shadow blur during drag — cuts render time 5-10×
+    const s = (on && !(touchDrag && touchDrag.cards)) ? SHADOW_ON : SHADOW_OFF;
+    ctx.shadowColor   = s.c;
+    ctx.shadowBlur    = s.b;
+    ctx.shadowOffsetY = s.o;
+}
+
+function buildCardBackImg() {
+    // Pre-render card back to offscreen canvas — drawn as one drawImage per card
+    const oc = document.createElement('canvas');
+    oc.width  = Math.ceil(CW * DPR);
+    oc.height = Math.ceil(CH * DPR);
+    const ot  = oc.getContext('2d');
+    ot.scale(DPR, DPR);
+    const rr = (x,y,w,h,r) => {
+        ot.beginPath();
+        ot.moveTo(x+r,y); ot.lineTo(x+w-r,y); ot.arcTo(x+w,y,x+w,y+r,r);
+        ot.lineTo(x+w,y+h-r); ot.arcTo(x+w,y+h,x+w-r,y+h,r);
+        ot.lineTo(x+r,y+h); ot.arcTo(x,y+h,x,y+h-r,r);
+        ot.lineTo(x,y+r); ot.arcTo(x,y,x+r,y,r); ot.closePath();
+    };
+    rr(0,0,CW,CH,6); ot.fillStyle='#0d3d21'; ot.fill();
+    ot.save(); rr(0,0,CW,CH,6); ot.clip();
+    ot.strokeStyle='rgba(255,255,255,0.075)'; ot.lineWidth=1;
+    ot.beginPath();
+    for (let i=-CH; i<CW+CH; i+=8) {
+        ot.moveTo(i,0); ot.lineTo(i+CH,CH); ot.moveTo(i+CH,0); ot.lineTo(i,CH);
+    }
+    ot.stroke(); ot.restore();
+    rr(0,0,CW,CH,6); ot.strokeStyle='rgba(255,255,255,0.1)'; ot.lineWidth=1; ot.stroke();
+    _cardBackImg=oc; _cbCW=CW; _cbCH=CH; _cbDPR=DPR;
+}
+
+function drawCardBack(x, y) {
+    if (!_cardBackImg || _cbCW!==CW || _cbCH!==CH || _cbDPR!==DPR) buildCardBackImg();
+    shadow(true);
+    ctx.drawImage(_cardBackImg, x, y, CW, CH);
+    shadow(false);
+}
+
+function drawFaceArt(x, y, rank, suit) {
+    const isRd = suit === '♥' || suit === '♦';
+    const clr  = SUIT_COLORS[suit];
+    const cx   = x + CW / 2;
+    const sc   = CH / 120;
+
+    // Inner decorative border
+    const bm = Math.max(2, Math.round(CW * 0.07));
+    roundRect(x + bm, y + bm, CW - bm*2, CH - bm*2, 3);
+    ctx.strokeStyle = isRd ? 'rgba(180,20,40,0.2)' : 'rgba(0,0,0,0.12)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    const artTop = y + CH * 0.17;
+
+    if (rank === 'K' || rank === 'Q') {
+        // Crown
+        const cw = sc*30, ch = sc*16, cy = artTop + sc*2;
+        ctx.fillStyle = '#c8a020';
+        ctx.beginPath();
+        ctx.moveTo(cx - cw/2, cy + ch);
+        ctx.lineTo(cx - cw/2, cy + ch*0.35);
+        ctx.lineTo(cx - cw/6, cy + ch*0.65);
+        ctx.lineTo(cx,        cy);
+        ctx.lineTo(cx + cw/6, cy + ch*0.65);
+        ctx.lineTo(cx + cw/2, cy + ch*0.35);
+        ctx.lineTo(cx + cw/2, cy + ch);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#9a6010';
+        ctx.fillRect(cx - cw/2, cy + ch*0.72, cw, ch*0.28);
+    } else {
+        // Jack — feathered cap
+        const hw = sc*24, hh = sc*12, hy = artTop + sc*2;
+        ctx.fillStyle = clr;
+        ctx.fillRect(cx - hw/2, hy, hw, hh);
+        ctx.fillRect(cx - hw*0.7, hy + hh*0.5, hw*1.4, hh*0.5);
+        ctx.save();
+        ctx.strokeStyle = '#c8a020';
+        ctx.lineWidth = sc*2.5;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(cx + hw*0.4, hy + hh*0.2);
+        ctx.quadraticCurveTo(cx + hw, hy - hh, cx + hw*0.3, hy - hh*1.8);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // Head
+    const headY = artTop + sc*30;
+    ctx.fillStyle = '#f0c898';
+    ctx.beginPath();
+    ctx.arc(cx, headY, sc*12, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+
+    // Eyes
+    ctx.fillStyle = '#2a1a0a';
+    ctx.beginPath();
+    ctx.arc(cx - sc*4, headY - sc*1, sc*1.8, 0, Math.PI*2);
+    ctx.arc(cx + sc*4, headY - sc*1, sc*1.8, 0, Math.PI*2);
+    ctx.fill();
+
+    // Mouth
+    ctx.strokeStyle = '#8a4a2a';
+    ctx.lineWidth = sc*1.2;
+    ctx.beginPath();
+    ctx.arc(cx, headY + sc*3, sc*3.5, 0.1*Math.PI, 0.9*Math.PI);
+    ctx.stroke();
+
+    // Body
+    const bodyTop = headY + sc*13;
+    ctx.fillStyle = clr;
+    ctx.beginPath();
+    ctx.moveTo(cx - sc*13, bodyTop);
+    ctx.lineTo(cx + sc*13, bodyTop);
+    ctx.lineTo(cx + sc*16, bodyTop + sc*44);
+    ctx.lineTo(cx - sc*16, bodyTop + sc*44);
+    ctx.closePath();
+    ctx.fill();
+
+    // Suit on body
+    ctx.fillStyle = 'rgba(255,255,255,0.88)';
+    ctx.font = `bold ${Math.round(sc*14)}px system-ui`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(suit, cx, bodyTop + sc*22);
+
+    // Arms
+    ctx.strokeStyle = clr;
+    ctx.lineWidth = sc*4.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx - sc*13, bodyTop + sc*8);
+    ctx.lineTo(cx - sc*22, bodyTop + sc*26);
+    ctx.moveTo(cx + sc*13, bodyTop + sc*8);
+    ctx.lineTo(cx + sc*22, bodyTop + sc*26);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+}
+
+function drawAceCenter(x, y, suit) {
+    const isRd = suit === '♥' || suit === '♦';
+    const cx = x + CW / 2;
+    const cy = y + CH * 0.52;
+
+    const bm = Math.max(2, Math.round(CW * 0.07));
+    roundRect(x + bm, y + bm, CW - bm*2, CH - bm*2, 3);
+    ctx.strokeStyle = isRd ? 'rgba(180,20,40,0.2)' : 'rgba(0,0,0,0.12)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    const bigSz = Math.round(CW * 0.65);
+    ctx.font = `${bigSz}px system-ui`;
+    ctx.fillStyle = SUIT_COLORS[suit];
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(suit, cx, cy);
+
+    ctx.strokeStyle = isRd ? 'rgba(196,30,58,0.12)' : 'rgba(0,0,0,0.08)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 4]);
+    const gap = bigSz * 0.38;
+    const lx1 = x + Math.round(CW * 0.07), lx2 = cx - gap;
+    const lx3 = cx + gap,                  lx4 = x + CW - Math.round(CW * 0.07);
+    ctx.beginPath();
+    if (lx2 > lx1) { ctx.moveTo(lx1, cy); ctx.lineTo(lx2, cy); }
+    if (lx4 > lx3) { ctx.moveTo(lx3, cy); ctx.lineTo(lx4, cy); }
+    ctx.stroke();
+    ctx.setLineDash([]);
+}
+
+function drawCardFace(x, y, card, highlight) {
+    shadow(true);
+    roundRect(x, y, CW, CH, 6);
+    ctx.fillStyle = highlight ? '#fffde0' : '#fffef8';
+    ctx.fill();
+    shadow(false);
+
+    if (highlight) {
+        roundRect(x, y, CW, CH, 6);
+        ctx.strokeStyle = '#f5c518';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+    } else {
+        roundRect(x, y, CW, CH, 6);
+        ctx.strokeStyle = 'rgba(0,0,0,0.09)';
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+    }
+
+    const color = SUIT_COLORS[card.suit];
+    const margin   = Math.max(3, Math.round(CW * 0.09));
+    const rankSz   = Math.max(10, Math.round(CW * 0.22));
+    const suitSmSz = Math.round(CW * 0.18);
+
+    ctx.fillStyle    = color;
+    ctx.textBaseline = 'top';
+    ctx.textAlign    = 'left';
+
+    // Top-left rank
+    ctx.font = `bold ${rankSz}px system-ui`;
+    ctx.fillText(card.rank, x + margin, y + margin);
+
+    // Top-left small suit
+    ctx.font = `${suitSmSz}px system-ui`;
+    ctx.fillText(card.suit, x + margin, y + margin + rankSz + 1);
+
+    // Center art
+    if (card.rank === 'J' || card.rank === 'Q' || card.rank === 'K') {
+        drawFaceArt(x, y, card.rank, card.suit);
+    } else if (card.rank === 'A') {
+        drawAceCenter(x, y, card.suit);
+    } else {
+        const suitBgSz = Math.round(CW * 0.42);
+        ctx.font         = `${suitBgSz}px system-ui`;
+        ctx.textAlign    = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(card.suit, x + CW / 2, y + CH * 0.58);
+    }
+
+    // Bottom-right (rotated 180°)
+    ctx.save();
+    ctx.translate(x + CW - margin, y + CH - margin);
+    ctx.rotate(Math.PI);
+    ctx.textAlign    = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle    = color;
+    ctx.font = `bold ${rankSz}px system-ui`;
+    ctx.fillText(card.rank, 0, 0);
+    ctx.font = `${suitSmSz}px system-ui`;
+    ctx.fillText(card.suit, 0, rankSz + 1);
+    ctx.restore();
+}
+
+function drawEmptySlot(x, y, label) {
+    roundRect(x, y, CW, CH, 6);
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+    ctx.lineWidth   = 2;
+    ctx.setLineDash([5, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    if (label) {
+        ctx.fillStyle    = 'rgba(255,255,255,0.2)';
+        ctx.font         = `bold ${Math.round(CW * 0.38)}px system-ui`;
+        ctx.textAlign    = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, x + CW / 2, y + CH / 2);
+    }
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function render() {
+    recalcOverlaps();
+    const W = canvas.clientWidth, H = canvas.clientHeight;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#1a5e3a';
+    ctx.fillRect(0, 0, W, H);
+    if (!CW) return;
+
+    const topY = 4;
+
+    // Stock
+    if (stock.length > 0) {
+        drawCardBack(colX(0), topY);
+    } else {
+        drawEmptySlot(colX(0), topY, '↺');
+    }
+
+    // Waste — show fan of up to drawCount cards for Draw-3, single card for Draw-1
+    const dragFromWaste = touchDrag && touchDrag.srcHit && touchDrag.srcHit.source === 'waste';
+    const wasteShow = waste.length - (dragFromWaste ? 1 : 0);
+    if (wasteShow > 0) {
+        const selW = !dragFromWaste && selected && selected.source === 'waste';
+        if (drawCount === 1) {
+            drawCardFace(colX(1), topY, waste[wasteShow - 1], selW);
+        } else {
+            // Draw-3 fan: show up to 3 cards with horizontal offset
+            const show = Math.min(3, wasteShow);
+            const fan  = Math.min(14, Math.round(CW * 0.22));
+            for (let i = show - 1; i >= 0; i--) {
+                const card = waste[wasteShow - show + i];
+                const ox   = i * fan;
+                drawCardFace(colX(1) + ox, topY, card, selW && i === show - 1);
+            }
+        }
+    } else {
+        drawEmptySlot(colX(1), topY, '');
+    }
+
+    // Foundations (cols 3-6)
+    const FSYM = ['♠', '♥', '♦', '♣'];
+    for (let fi = 0; fi < 4; fi++) {
+        const fx   = colX(fi + 3);
+        const pile = foundations[fi];
+        const draggingFrom = touchDrag && touchDrag.srcHit &&
+                             touchDrag.srcHit.source === 'foundation' && touchDrag.srcHit.col === fi;
+        const showLen = pile.length - (draggingFrom ? 1 : 0);
+        const sel  = !draggingFrom && selected && selected.source === 'foundation' && selected.col === fi;
+        if (showLen > 0) {
+            drawCardFace(fx, topY, pile[showLen - 1], sel);
+        } else {
+            drawEmptySlot(fx, topY, FSYM[fi]);
+        }
+    }
+
+    // Tableau
+    for (let ci = 0; ci < 7; ci++) {
+        const tx  = colX(ci);
+        const col = tableau[ci];
+        if (col.length === 0) {
+            drawEmptySlot(tx, BOARD_Y, '');
+            continue;
+        }
+        let y = BOARD_Y;
+        const dragSrc = touchDrag && touchDrag.srcHit && touchDrag.srcHit.source === 'tableau'
+                        && touchDrag.srcHit.col === ci ? touchDrag.srcHit.idx : -1;
+        for (let ri = 0; ri < col.length; ri++) {
+            if (dragSrc >= 0 && ri >= dragSrc) break; // skip dragged cards at source
+            const card = col[ri];
+            const selCard = selected && selected.source === 'tableau' &&
+                            selected.col === ci && ri >= selected.idx;
+            if (!card.faceUp) {
+                drawCardBack(tx, y);
+            } else {
+                drawCardFace(tx, y, card, selCard);
+            }
+            if (ri < col.length - 1) {
+                y += col[ri].faceUp ? OVERLAP_UP : OVERLAP_DOWN;
+            }
+        }
+    }
+
+    // Snap target highlight
+    if (touchDrag && touchDrag.cards && touchDrag.snap) {
+        const { x: sx, y: sy } = touchDrag.snap;
+        ctx.save();
+        roundRect(sx - 3, sy - 3, CW + 6, CH + 6, 9);
+        ctx.strokeStyle = 'rgba(80, 255, 130, 0.9)';
+        ctx.lineWidth = 3.5;
+        ctx.shadowColor = 'rgba(60, 255, 110, 0.65)';
+        ctx.shadowBlur = 18;
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // Drag ghost
+    if (touchDrag && touchDrag.cards) {
+        const grabX = touchDrag.grabX !== undefined ? touchDrag.grabX : CW / 2;
+        const grabY = touchDrag.grabY !== undefined ? touchDrag.grabY : CH * 0.25;
+        const ox = touchDrag.x - grabX;
+        const oy = touchDrag.y - grabY;
+        ctx.globalAlpha = 0.88;
+        for (let i = 0; i < touchDrag.cards.length; i++) {
+            drawCardFace(ox, oy + i * OVERLAP_UP, touchDrag.cards[i], false);
+        }
+        ctx.globalAlpha = 1;
+    }
+}
+
+// Compute y position of card ri in column ci
+function cardY(ci, ri) {
+    let y = BOARD_Y;
+    for (let i = 0; i < ri; i++) {
+        y += tableau[ci][i].faceUp ? OVERLAP_UP : OVERLAP_DOWN;
+    }
+    return y;
+}
+
+// ─── Grab offset & snap helpers ───────────────────────────────────────────────
+let rafPending = false;
+
+function getCardOrigin(hit) {
+    const topY = 4;
+    if (hit.source === 'waste') {
+        if (drawCount === 3) {
+            const show = Math.min(3, waste.length);
+            const fan  = Math.min(14, Math.round(CW * 0.22));
+            return [colX(1) + (show - 1) * fan, topY];
+        }
+        return [colX(1), topY];
+    }
+    if (hit.source === 'tableau') {
+        return [colX(hit.col), cardY(hit.col, hit.idx)];
+    }
+    if (hit.source === 'foundation') {
+        return [colX(hit.col + 3), 4];
+    }
+    return [0, 0];
+}
+
+function findSnapTarget() {
+    if (!touchDrag || !touchDrag.cards || !touchDrag.srcHit) return null;
+    const cards   = touchDrag.cards;
+    const grabX   = touchDrag.grabX !== undefined ? touchDrag.grabX : CW / 2;
+    const grabY   = touchDrag.grabY !== undefined ? touchDrag.grabY : CH * 0.25;
+    const cardLeft = touchDrag.x - grabX;
+    const cardTop  = touchDrag.y - grabY;
+    const cx = cardLeft + CW / 2;
+    const cy = cardTop  + CH / 3;
+    const SNAP_R = CW * 1.1;
+    const topY = 4;
+
+    let best = null, bestDist = SNAP_R;
+
+    // Check foundations
+    for (let fi = 0; fi < 4; fi++) {
+        if (cards.length !== 1) continue;
+        if (!canFoundation(cards[0], foundations[fi])) continue;
+        const fx = colX(fi + 3) + CW / 2;
+        const fy = topY + CH / 2;
+        const d = Math.hypot(cx - fx, cy - fy);
+        if (d < bestDist) {
+            bestDist = d;
+            best = { hit: { source: 'foundation', col: fi }, x: colX(fi + 3), y: topY };
+        }
+    }
+
+    // Check tableau columns
+    for (let ci = 0; ci < 7; ci++) {
+        if (touchDrag.srcHit.source === 'tableau' && touchDrag.srcHit.col === ci) continue;
+        const col = tableau[ci];
+        let slotX = colX(ci), slotY, hitType;
+        if (col.length === 0) {
+            if (cards[0].rank !== 'K') continue;
+            slotY = BOARD_Y;
+            hitType = 'tableau_empty';
+        } else {
+            if (!canTableau(cards[0], col)) continue;
+            slotY = cardY(ci, col.length - 1);
+            hitType = 'tableau';
+        }
+        const fx = slotX + CW / 2;
+        const fy = slotY + CH / 2;
+        const d = Math.hypot(cx - fx, cy - fy);
+        if (d < bestDist) {
+            bestDist = d;
+            best = { hit: { source: hitType, col: ci }, x: slotX, y: slotY };
+        }
+    }
+
+    return best;
+}
+
+// ─── Hit testing ──────────────────────────────────────────────────────────────
+function hitTest(mx, my) {
+    recalcOverlaps();
+    // Stock
+    const sx = colX(0);
+    if (mx >= sx && mx < sx + CW && my >= 4 && my < 4 + CH) return { source: 'stock' };
+
+    // Waste
+    const wx = colX(1);
+    if (waste.length > 0 && my >= 4 && my < 4 + CH) {
+        const wFan  = drawCount === 3 ? Math.min(14, Math.round(CW * 0.22)) : 0;
+        const wShow = Math.min(drawCount === 3 ? 3 : 1, waste.length);
+        if (mx >= wx && mx < wx + (wShow - 1) * wFan + CW)
+            return { source: 'waste' };
+    }
+
+    // Foundations
+    for (let fi = 0; fi < 4; fi++) {
+        const fx = colX(fi + 3);
+        if (mx >= fx && mx < fx + CW && my >= 4 && my < 4 + CH)
+            return { source: 'foundation', col: fi };
+    }
+
+    // Tableau
+    for (let ci = 0; ci < 7; ci++) {
+        const tx = colX(ci);
+        if (mx < tx || mx >= tx + CW) continue;
+        const col = tableau[ci];
+
+        if (col.length === 0) {
+            if (my >= BOARD_Y && my < BOARD_Y + CH)
+                return { source: 'tableau_empty', col: ci };
+            continue;
+        }
+
+        // Iterate top-to-bottom, last card gets full height
+        for (let ri = col.length - 1; ri >= 0; ri--) {
+            const cy = cardY(ci, ri);
+            const bottom = (ri === col.length - 1)
+                ? cy + CH
+                : cy + (col[ri].faceUp ? OVERLAP_UP : OVERLAP_DOWN);
+            if (my >= cy && my < bottom)
+                return { source: 'tableau', col: ci, idx: ri };
+        }
+    }
+    return null;
+}
+
+// ─── Move logic ───────────────────────────────────────────────────────────────
+function flipTabTop(ci) {
+    const col = tableau[ci];
+    if (col.length > 0 && !col[col.length - 1].faceUp) {
+        col[col.length - 1].faceUp = true;
+        addScore(5);
+    }
+}
+
+function removeFromSource(src) {
+    if (src.source === 'waste') {
+        waste.pop();
+    } else if (src.source === 'tableau') {
+        tableau[src.col].splice(src.idx);
+        flipTabTop(src.col);
+    } else if (src.source === 'foundation') {
+        foundations[src.col].pop();
+    }
+}
+
+function addScore(n) { score = Math.max(0, score + n); }
+
+function checkWin() {
+    if (foundations.every(p => p.length === 13)) {
+        updateUI();
+        render();
+        setTimeout(startWinAnimation, 200);
+        return true;
+    }
+    return false;
+}
+
+// ─── Auto-complete & win animation ───────────────────────────────────────────
+let autoTimer = null;
+let winParticles = null;
+
+function checkAutoComplete() {
+    if (autoTimer || winParticles) return;
+    if (stock.length > 0) return;
+    for (const col of tableau) {
+        if (col.some(c => !c.faceUp)) return;
+    }
+    autoTimer = setTimeout(autoCompleteStep, 500);
+}
+
+function autoCompleteStep() {
+    autoTimer = null;
+    // Try waste → foundation
+    if (waste.length > 0) {
+        const card = waste[waste.length - 1];
+        for (let fi = 0; fi < 4; fi++) {
+            if (canFoundation(card, foundations[fi])) {
+                foundations[fi].push(card); waste.pop();
+                addScore(10); moveCount++; updateUI(); render();
+                if (!checkWin()) autoTimer = setTimeout(autoCompleteStep, 55);
+                return;
+            }
+        }
+    }
+    // Try tableau → foundation (low ranks first for stable ordering)
+    for (let pass = 0; pass < 2; pass++) {
+        for (let ci = 0; ci < 7; ci++) {
+            const col = tableau[ci];
+            if (!col.length) continue;
+            const card = col[col.length - 1];
+            if (!card.faceUp) continue;
+            for (let fi = 0; fi < 4; fi++) {
+                if (canFoundation(card, foundations[fi])) {
+                    foundations[fi].push(card); col.pop();
+                    addScore(10); moveCount++; updateUI(); render();
+                    if (!checkWin()) autoTimer = setTimeout(autoCompleteStep, 55);
+                    return;
+                }
+            }
+        }
+    }
+}
+
+function startWinAnimation() {
+    const W = canvas.clientWidth, H = canvas.clientHeight;
+    winParticles = [];
+    let delay = 0;
+    for (let fi = 0; fi < 4; fi++) {
+        for (let k = 0; k < foundations[fi].length; k++) {
+            winParticles.push({
+                card: foundations[fi][k],
+                x: colX(fi + 3), y: 4,
+                vx: (Math.random() - 0.5) * 10,
+                vy: -(Math.random() * 10 + 4),
+                delay: delay
+            });
+            delay += 18;
+        }
+    }
+    requestAnimationFrame(winAnimFrame);
+}
+
+function winAnimFrame() {
+    if (!winParticles) return;
+    const W = canvas.clientWidth, H = canvas.clientHeight;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#1a5e3a';
+    ctx.fillRect(0, 0, W, H);
+
+    let anyMoving = false;
+    for (const p of winParticles) {
+        if (p.delay > 0) { p.delay -= 16; anyMoving = true; continue; }
+        p.vy += 0.55;
+        p.x  += p.vx;
+        p.y  += p.vy;
+        if (p.y + CH >= H) {
+            p.y  = H - CH;
+            p.vy = -Math.abs(p.vy) * 0.62;
+            p.vx *= 0.88;
+        }
+        if (p.x < 0)       { p.x = 0;       p.vx =  Math.abs(p.vx) * 0.8; }
+        if (p.x + CW > W)  { p.x = W - CW;  p.vx = -Math.abs(p.vx) * 0.8; }
+        if (Math.abs(p.vy) > 0.8 || p.y + CH < H - 2) anyMoving = true;
+        drawCardFace(p.x, p.y, p.card, false);
+    }
+
+    if (anyMoving) {
+        requestAnimationFrame(winAnimFrame);
+    } else {
+        winParticles = null;
+        document.getElementById('winMsg').textContent = 'Очки: ' + score;
+        document.getElementById('winOverlay').classList.add('show');
+    }
+}
+
+function tryAutoFoundation(cards, src) {
+    if (cards.length !== 1) return false;
+    const card = cards[0];
+    for (let fi = 0; fi < 4; fi++) {
+        if (canFoundation(card, foundations[fi])) {
+            pushUndo();
+            foundations[fi].push(card);
+            removeFromSource(src);
+            addScore(10);
+            moveCount++;
+            checkWin();
+            return true;
+        }
+    }
+    return false;
+}
+
+// ─── Click handling ───────────────────────────────────────────────────────────
+function handleClick(mx, my) {
+    const hit = hitTest(mx, my);
+
+    if (!hit) {
+        selected = null;
+        render();
+        return;
+    }
+
+    // Stock click
+    if (hit.source === 'stock') {
+        selected = null;
+        pushUndo();
+        if (stock.length > 0) {
+            const n = Math.min(drawCount, stock.length);
+            for (let i = 0; i < n; i++) {
+                const c = stock.pop();
+                c.faceUp = true;
+                waste.push(c);
+            }
+            moveCount++;
+            checkAutoComplete();
+        } else if (waste.length > 0) {
+            // recycle
+            while (waste.length) {
+                const c = waste.pop();
+                c.faceUp = false;
+                stock.push(c);
+            }
+            addScore(-100);
+            moveCount++;
+        }
+        updateUI();
+        render();
+        return;
+    }
+
+    // If something is selected, try to drop it
+    if (selected) {
+        if (tryDrop(selected, hit)) {
+            selected = null;
+            updateUI();
+            render();
+            return;
+        }
+
+        // Clicking same source → deselect
+        const sameWaste = selected.source === 'waste' && hit.source === 'waste';
+        const sameFoun  = selected.source === 'foundation' && hit.source === 'foundation' && selected.col === hit.col;
+        const sameTab   = selected.source === 'tableau'    && hit.source === 'tableau'    && selected.col === hit.col;
+        if (sameWaste || sameFoun || sameTab) {
+            selected = null;
+            render();
+            return;
+        }
+
+        // Otherwise, re-select whatever was clicked
+        selected = null;
+    }
+
+    // New selection
+    if (hit.source === 'waste' && waste.length > 0) {
+        selected = { source: 'waste', cards: [waste[waste.length - 1]] };
+    } else if (hit.source === 'foundation') {
+        const pile = foundations[hit.col];
+        if (pile.length > 0)
+            selected = { source: 'foundation', col: hit.col, cards: [pile[pile.length - 1]] };
+    } else if (hit.source === 'tableau') {
+        const card = tableau[hit.col][hit.idx];
+        if (card.faceUp) {
+            const cards = tableau[hit.col].slice(hit.idx);
+            selected = { source: 'tableau', col: hit.col, idx: hit.idx, cards };
+        }
+    }
+
+    render();
+}
+
+function handleDblClick(mx, my) {
+    const hit = hitTest(mx, my);
+    if (!hit) return;
+
+    let cards = null, src = null;
+
+    if (hit.source === 'waste' && waste.length > 0) {
+        cards = [waste[waste.length - 1]];
+        src   = { source: 'waste' };
+    } else if (hit.source === 'tableau') {
+        const col = tableau[hit.col];
+        const top = col.length - 1;
+        if (col.length > 0 && col[top].faceUp && hit.idx === top) {
+            cards = [col[top]];
+            src   = { source: 'tableau', col: hit.col, idx: top };
+        }
+    }
+
+    if (cards && src) {
+        selected = null;
+        if (tryAutoFoundation(cards, src)) {
+            updateUI();
+            render();
+        }
+    }
+}
+
+// ─── Drop helper (shared by click and drag) ───────────────────────────────────
+function tryDrop(src, hit) {
+    // Return waste card to bottom of stock
+    if (src.source === 'waste' && hit.source === 'stock') {
+        pushUndo();
+        const card = waste.pop();
+        card.faceUp = false;
+        stock.unshift(card);
+        moveCount++;
+        return true;
+    }
+
+    let cards;
+    if (src.source === 'waste')      cards = [waste[waste.length - 1]];
+    else if (src.source === 'foundation') cards = [foundations[src.col][foundations[src.col].length - 1]];
+    else                             cards = tableau[src.col].slice(src.idx);
+
+    if (hit.source === 'foundation') {
+        if (cards.length === 1 && canFoundation(cards[0], foundations[hit.col])) {
+            pushUndo();
+            foundations[hit.col].push(cards[0]);
+            removeFromSource(src);
+            addScore(10);
+            moveCount++;
+            if (!checkWin()) checkAutoComplete();
+            return true;
+        }
+    } else if (hit.source === 'tableau' || hit.source === 'tableau_empty') {
+        const ci = hit.col, col = tableau[ci];
+        if (!(src.source === 'tableau' && src.col === ci) && canTableau(cards[0], col)) {
+            pushUndo();
+            col.push(...cards);
+            removeFromSource(src);
+            addScore(cards.length > 1 ? 5 : 3);
+            moveCount++;
+            checkAutoComplete();
+            return true;
+        }
+    }
+    return false;
+}
+
+// ─── Input events ─────────────────────────────────────────────────────────────
+let canvasRect = null; // cached per-gesture to avoid reflow on every touchmove
+
+function getPos(e) {
+    const r = canvasRect || (canvasRect = canvas.getBoundingClientRect());
+    if (e.touches || e.changedTouches) {
+        const t = e.touches[0] || e.changedTouches[0];
+        return [t.clientX - r.left, t.clientY - r.top];
+    }
+    return [e.clientX - r.left, e.clientY - r.top];
+}
+
+let lastTap = 0;
+
+canvas.addEventListener('click', e => {
+    if (document.getElementById('startOverlay').classList.contains('show')) return;
+    const [mx, my] = getPos(e);
+    handleClick(mx, my);
+});
+
+canvas.addEventListener('dblclick', e => {
+    if (document.getElementById('startOverlay').classList.contains('show')) return;
+    const [mx, my] = getPos(e);
+    handleDblClick(mx, my);
+});
+
+canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    canvasRect = canvas.getBoundingClientRect(); // refresh once per gesture
+    if (document.getElementById('startOverlay').classList.contains('show')) return;
+    const [mx, my] = getPos(e);
+    touchOrigin = { x: mx, y: my, time: Date.now() };
+    touchDrag   = null;
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (!touchOrigin) return;
+    const [mx, my] = getPos(e);
+    const dist = Math.hypot(mx - touchOrigin.x, my - touchOrigin.y);
+    if (!touchDrag && dist > 8) {
+        const hit = hitTest(touchOrigin.x, touchOrigin.y);
+        let cards = null, srcHit = null, grabX = CW / 2, grabY = CH * 0.22;
+        if (hit) {
+            if (hit.source === 'waste' && waste.length > 0) {
+                cards = [waste[waste.length - 1]];
+                srcHit = { source: 'waste' };
+                const [ox, oy] = getCardOrigin(hit);
+                grabX = Math.max(2, Math.min(CW - 2, touchOrigin.x - ox));
+                grabY = Math.max(2, Math.min(CH - 4, touchOrigin.y - oy));
+            } else if (hit.source === 'tableau') {
+                const card = tableau[hit.col][hit.idx];
+                if (card.faceUp) {
+                    cards = tableau[hit.col].slice(hit.idx);
+                    srcHit = hit;
+                    const [ox, oy] = getCardOrigin(hit);
+                    grabX = Math.max(2, Math.min(CW - 2, touchOrigin.x - ox));
+                    grabY = Math.max(2, Math.min(CH - 4, touchOrigin.y - oy));
+                }
+            } else if (hit.source === 'foundation') {
+                const pile = foundations[hit.col];
+                if (pile.length > 0) {
+                    cards = [pile[pile.length - 1]];
+                    srcHit = hit;
+                    const [ox, oy] = getCardOrigin(hit);
+                    grabX = Math.max(2, Math.min(CW - 2, touchOrigin.x - ox));
+                    grabY = Math.max(2, Math.min(CH - 4, touchOrigin.y - oy));
+                }
+            }
+        }
+        touchDrag = { srcHit, cards, x: mx, y: my, grabX, grabY, snap: null };
+    } else if (touchDrag) {
+        touchDrag.x = mx;
+        touchDrag.y = my;
+        if (touchDrag.cards) {
+            touchDrag.snap = findSnapTarget();
+            if (!rafPending) {
+                rafPending = true;
+                requestAnimationFrame(() => { rafPending = false; render(); });
+            }
+        }
+    }
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => {
+    e.preventDefault();
+    if (document.getElementById('startOverlay').classList.contains('show')) return;
+    const [mx, my] = getPos(e);
+
+    if (touchDrag && touchDrag.cards && touchDrag.srcHit) {
+        const snapHit = touchDrag.snap ? touchDrag.snap.hit : null;
+        const hit = snapHit || hitTest(mx, my);
+        if (hit && tryDrop(touchDrag.srcHit, hit)) {
+            selected = null;
+            updateUI();
+        }
+        touchDrag   = null;
+        touchOrigin = null;
+        if (!rafPending) { rafPending = true; requestAnimationFrame(() => { rafPending = false; render(); }); }
+        return;
+    }
+
+    const wasDrag = touchDrag && !touchDrag.cards;
+    touchDrag   = null;
+    touchOrigin = null;
+    if (wasDrag) { render(); return; }
+
+    const now = Date.now();
+    if (now - lastTap < 300) {
+        handleDblClick(mx, my);
+        lastTap = 0;
+    } else {
+        lastTap = now;
+        handleClick(mx, my);
+    }
+}, { passive: false });
+
+document.getElementById('btnUndo').addEventListener('click', doUndo);
+document.getElementById('btnNew').addEventListener('click', newGame);
+window.addEventListener('resize', resize);
+document.querySelectorAll('.diff-btn').forEach(b =>
+    b.addEventListener('click', () => setDifficulty(b.dataset.d)));
+
+// ─── Fullscreen ───────────────────────────────────────────────────────────────
+document.getElementById('btnFullscreen').addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+        document.exitFullscreen();
+    }
+});
+document.addEventListener('fullscreenchange', () => {
+    const btn = document.getElementById('btnFullscreen');
+    btn.title = document.fullscreenElement ? 'Выйти из полного экрана' : 'Полный экран';
+    btn.textContent = document.fullscreenElement ? '⊡' : '⛶';
+    setTimeout(resize, 150);
+});
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+resize();
+// Show start overlay immediately; initialize default difficulty (easy)
+document.getElementById('startOverlay').classList.add('show');
+setDifficulty('easy');
+</script>
+</body>
+</html>

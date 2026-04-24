@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arena — WebGPU Voxel</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a0f; }
+
+canvas { display: block; width: 100vw; height: 100vh; cursor: crosshair; }
+
+/* ── HUD ─────────────────────────────────────────────────────────── */
+#hud {
+  position: fixed; inset: 0; pointer-events: none;
+  font-family: 'Courier New', monospace; font-size: 13px;
+  color: rgba(255,255,255,0.85); text-shadow: 0 1px 3px rgba(0,0,0,.8);
+}
+#top-left { position: absolute; top: 14px; left: 16px;
+            display: flex; flex-direction: column; gap: 3px; }
+#top-left .title { font-size: 15px; font-weight: bold; letter-spacing: 2px;
+                   color: #89dceb; margin-bottom: 4px; }
+#top-right { position: absolute; top: 14px; right: 16px;
+             text-align: right; display: flex; flex-direction: column; gap: 4px; }
+#top-right span { font-size: 11px; color: rgba(255,255,255,0.4); }
+#top-right span.key { color: rgba(137,220,235,0.7); }
+
+#crosshair {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%); width: 20px; height: 20px;
+}
+#crosshair::before, #crosshair::after {
+  content: ''; position: absolute; background: rgba(255,255,255,0.8);
+}
+#crosshair::before { width: 2px; height: 100%; left: 50%; transform: translateX(-50%); }
+#crosshair::after  { width: 100%; height: 2px; top: 50%; transform: translateY(-50%); }
+
+#bottom {
+  position: absolute; bottom: 20px; left: 0; right: 0;
+  display: flex; justify-content: center; align-items: center; gap: 24px;
+}
+#hint { font-size: 12px; color: rgba(255,255,255,0.45); }
+a.back {
+  pointer-events: all; text-decoration: none; font-size: 13px;
+  color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15); border-radius: 6px;
+  padding: 6px 14px; backdrop-filter: blur(8px);
+  transition: background .2s, color .2s;
+}
+a.back:hover { background: rgba(255,255,255,0.18); color: #fff; }
+.badge {
+  display: inline-block; background: rgba(137,220,235,0.12);
+  border: 1px solid rgba(137,220,235,0.3); border-radius: 4px;
+  padding: 2px 7px; font-size: 11px; color: #89dceb; letter-spacing: 1px;
+}
+
+/* ── Loading ─────────────────────────────────────────────────────── */
+#loading {
+  position: fixed; inset: 0; display: flex; align-items: center;
+  justify-content: center; background: #0a0a0f; color: #89dceb;
+  font-family: 'Courier New', monospace; font-size: 16px;
+  letter-spacing: 2px; z-index: 50;
+}
+
+/* ── ESC Settings menu ────────────────────────────────────────────── */
+#esc-menu {
+  position: fixed; inset: 0; display: none; align-items: center;
+  justify-content: center; background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(6px); z-index: 80;
+}
+.settings-panel {
+  background: rgba(18,18,28,0.95); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px; padding: 28px 32px; width: 380px; max-width: 95vw;
+  display: flex; flex-direction: column; gap: 20px;
+  font-family: 'Courier New', monospace;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+}
+.settings-panel h2 {
+  font-size: 15px; letter-spacing: 3px; color: #89dceb;
+  border-bottom: 1px solid rgba(137,220,235,0.2); padding-bottom: 12px;
+}
+.section-title {
+  font-size: 10px; letter-spacing: 2px; color: rgba(255,255,255,0.35);
+  text-transform: uppercase; margin-bottom: -8px;
+}
+.row {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 12px; color: rgba(255,255,255,0.7);
+}
+.row label { flex: 1; white-space: nowrap; }
+.row .val { width: 34px; text-align: right; color: #89dceb; font-size: 11px; }
+.row input[type=range] {
+  flex: 1.4; accent-color: #89dceb; cursor: pointer;
+  -webkit-appearance: none; height: 4px; border-radius: 2px;
+  background: rgba(255,255,255,0.15);
+}
+.row input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px;
+  border-radius: 50%; background: #89dceb; cursor: pointer;
+}
+.toggle-row {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 12px; color: rgba(255,255,255,0.7); cursor: pointer;
+}
+.toggle-row input[type=checkbox] { accent-color: #89dceb; width: 14px; height: 14px; }
+
+.btn-row { display: flex; gap: 10px; margin-top: 4px; }
+button {
+  flex: 1; padding: 9px 0; border: none; border-radius: 7px; cursor: pointer;
+  font-family: 'Courier New', monospace; font-size: 12px; letter-spacing: 1px;
+  transition: background .15s, color .15s;
+}
+#btn-regen {
+  background: rgba(243,139,168,0.15); color: #f38ba8;
+  border: 1px solid rgba(243,139,168,0.3);
+}
+#btn-regen:hover { background: rgba(243,139,168,0.28); }
+#btn-resume {
+  background: rgba(137,220,235,0.12); color: #89dceb;
+  border: 1px solid rgba(137,220,235,0.25);
+}
+#btn-resume:hover { background: rgba(137,220,235,0.25); }
+.hint-text { font-size: 10px; color: rgba(255,255,255,0.25); letter-spacing: 1px; }
+
+/* ── Error overlay ────────────────────────────────────────────────── */
+#err {
+  position: fixed; inset: 0; display: none; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: rgba(10,10,15,.95); z-index: 100; gap: 16px;
+}
+#err .title-e { font-family: monospace; font-size: 20px; color: #f38ba8; letter-spacing: 2px; }
+#err .msg { font-family: monospace; font-size: 13px; color: rgba(255,255,255,.7);
+            max-width: 580px; text-align: center; line-height: 1.6; }
+#err a { color: #89dceb; font-family: monospace; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+
+<!-- HUD -->
+<div id="hud">
+  <div id="top-left">
+    <span class="title">ARENA <span class="badge">STAGE 2</span></span>
+    <span id="fps">FPS: —</span>
+    <span id="pos">— — —</span>
+    <span id="dc">DC: —</span>
+  </div>
+  <div id="top-right">
+    <span>WebGPU · Marching Cubes · City</span>
+    <span>WASD · Mouse · Shift=throttle</span>
+    <span class="key">LMB=взрыв · G=граната · E=транспорт</span>
+    <span class="key">F = fly/walk · ESC = settings</span>
+  </div>
+  <div id="crosshair"></div>
+  <div id="bottom">
+    <span id="hint">Click to start</span>
+    <a class="back" href="/">← Меню</a>
+  </div>
+</div>
+
+<!-- Loading -->
+<div id="loading">Initializing WebGPU...</div>
+
+<!-- ESC Settings panel -->
+<div id="esc-menu">
+  <div class="settings-panel">
+    <h2>⚙ НАСТРОЙКИ</h2>
+
+    <div class="section-title">Рельеф</div>
+
+    <div class="row">
+      <label>Горы</label>
+      <input type="range" id="sl-mtn" min="0" max="100" value="40">
+      <span class="val" id="sl-mtn-val">40%</span>
+    </div>
+    <div class="row">
+      <label>Высота равнин</label>
+      <input type="range" id="sl-plain" min="15" max="80" value="50">
+      <span class="val" id="sl-plain-val">50</span>
+    </div>
+    <div class="row">
+      <label>Высота гор</label>
+      <input type="range" id="sl-mh" min="40" max="200" value="100">
+      <span class="val" id="sl-mh-val">100</span>
+    </div>
+
+    <div class="btn-row">
+      <button id="btn-regen">⟳ Перегенерировать мир</button>
+    </div>
+
+    <div class="section-title">Игрок</div>
+
+    <label class="toggle-row">
+      <input type="checkbox" id="ck-fly" checked>
+      <span>Режим полёта (F для переключения)</span>
+    </label>
+
+    <div class="section-title">Графика</div>
+
+    <div class="row">
+      <label>Туман</label>
+      <input type="range" id="sl-fog" min="0" max="20" value="6">
+      <span class="val" id="sl-fog-val">6</span>
+    </div>
+
+    <div class="btn-row">
+      <button id="btn-resume">▶ Продолжить (ESC)</button>
+    </div>
+
+    <span class="hint-text">WASD · Space=тормоз/прыжок · Shift=ускорение · Ctrl=сброс газа · LMB=ломать · F=полёт · E=транспорт</span>
+  </div>
+</div>
+
+<!-- Error overlay -->
+<div id="err">
+  <div class="title-e">WebGPU Error</div>
+  <div class="msg"></div>
+  <a href="/">← Back to menu</a>
+</div>
+
+<script type="module" src="/static/arena/main.js"></script>
+</body>
+</html>

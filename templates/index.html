@@ -71,22 +71,78 @@
            color: #fff;
         }
 
+        /* Стили для меню каталогов */
+        .folders-menu {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .folders-menu h1 {
+            color: white;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        
+        .folders-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+        
+        .folder-item {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .folder-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .folder-item a {
+            color: white;
+            text-decoration: none;
+            font-size: 1.1rem;
+        }
+
     </style>
 </head>
 
 <body>
     <div id="menu-div">
-    <button id="menu-btn" onclick="location.href='/';">
+    <button id="menu-btn" onclick="location.href='/menu';">
       <span></span>
       <span></span>
       <span></span>
     </button>
     </div>
+    {% if not folders %}
     <div id="admin">
      <button id="read-more">NEXT</button>
     </div>
+    {% endif %}
     <div id="root">
-
+        {% if folders %}
+            <!-- Меню каталогов -->
+            <div class="folders-menu">
+                <h1>📁 Выберите каталог</h1>
+                <div class="folders-list">
+                    {% for folder in folders %}
+                        <div class="folder-item">
+                            <a href="/?urla={{ folder }}">{{ folder }}</a>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
     </div>
 </body>
 <template id="post_template">
@@ -102,7 +158,7 @@
     let shouldLoad = true
     let page = getPage();
     const button = document.querySelector("#read-more");
-    const allphotos = {{ imgs|safe }}
+    const allphotos = {{ imgs|safe if imgs else [] }}
 
     function readMore() {
       var divsc = document.getElementsByClassName('el active')
@@ -210,10 +266,13 @@
     }
 
     (() => {
-      window.onload = fetchPosts();
-      window.addEventListener('scroll', throttle(checkPosition))
-      window.addEventListener('resize', throttle(checkPosition))
-      button.addEventListener("click", readMore);
+      // Запускаем скрипт только если есть изображения для показа
+      if (allphotos && allphotos.length > 0) {
+        window.onload = fetchPosts();
+        window.addEventListener('scroll', throttle(checkPosition))
+        window.addEventListener('resize', throttle(checkPosition))
+        button.addEventListener("click", readMore);
+      }
     })()
 
 </script>

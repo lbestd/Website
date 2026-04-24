@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Сапёр</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background: #11111b;
+    color: #cdd6f4;
+    font-family: system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+#top-bar {
+    width: 100%;
+    max-width: 500px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px 6px;
+    font-size: 14px;
+    color: #a6adc8;
+}
+#top-bar a { color: #89b4fa; text-decoration: none; font-size: 13px; }
+#info-bar {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    padding: 4px 16px 8px;
+    font-size: 14px;
+}
+.badge {
+    background: #1e1e2e;
+    border: 1px solid #313244;
+    border-radius: 20px;
+    padding: 4px 14px;
+    color: #cdd6f4;
+    font-size: 15px;
+    font-weight: 600;
+}
+#face-btn {
+    background: none; border: none; font-size: 26px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+#difficulty {
+    display: flex; gap: 8px; padding: 0 16px 8px;
+}
+.diff-btn {
+    background: #1e1e2e; border: 1px solid #45475a;
+    border-radius: 20px; padding: 5px 14px;
+    font-size: 12px; color: #a6adc8; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.diff-btn.active { background: #cba6f7; color: #1e1e2e; border-color: #cba6f7; font-weight: 700; }
+
+#board-wrap {
+    overflow: auto;
+    max-width: 100vw;
+    padding: 4px 8px 16px;
+}
+#board {
+    display: inline-grid;
+    gap: 2px;
+    background: #181825;
+    border: 2px solid #313244;
+    border-radius: 8px;
+    padding: 6px;
+}
+.cell {
+    width: 32px; height: 32px;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 700;
+    cursor: pointer;
+    background: #313244;
+    border: 1px solid #45475a;
+    transition: background 0.08s;
+    -webkit-tap-highlight-color: transparent;
+}
+.cell:hover { background: #45475a; }
+.cell.revealed {
+    background: #1e1e2e; border-color: #2a2a3e; cursor: default;
+}
+.cell.flagged { background: #2a2a3e; }
+.cell.mine-hit { background: #f38ba8 !important; }
+
+.n1{color:#89b4fa} .n2{color:#a6e3a1} .n3{color:#f38ba8}
+.n4{color:#cba6f7} .n5{color:#fab387} .n6{color:#89dceb}
+.n7{color:#f2cdcd} .n8{color:#a6adc8}
+
+#overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 14px; z-index: 100;
+}
+#overlay h2 { font-size: 30px; }
+#overlay p  { color: #a6adc8; font-size: 14px; }
+#overlay button {
+    background: #cba6f7; color: #1e1e2e;
+    border: none; border-radius: 20px;
+    padding: 12px 32px; font-size: 16px; font-weight: 700; cursor: pointer;
+}
+
+@media (max-width: 400px) {
+    .cell { width: 28px; height: 28px; font-size: 13px; }
+}
+</style>
+</head>
+<body>
+
+<div id="top-bar">
+    <a href="/">← Меню</a>
+    <span id="timer-label">00:00</span>
+</div>
+
+<div id="info-bar">
+    <span class="badge">💣 <span id="mines-left">0</span></span>
+    <button id="face-btn">🙂</button>
+    <span class="badge">🏆 <span id="best-label">—</span></span>
+</div>
+
+<div id="difficulty">
+    <button class="diff-btn active" data-diff="easy">Легко</button>
+    <button class="diff-btn" data-diff="medium">Средне</button>
+    <button class="diff-btn" data-diff="hard">Сложно</button>
+</div>
+
+<div id="board-wrap">
+    <div id="board"></div>
+</div>
+
+<div id="overlay">
+    <h2>💣 Сапёр</h2>
+    <p>Долгое нажатие / ПКМ — флаг</p>
+    <button id="start-btn">Начать</button>
+</div>
+
+<script>
+const DIFF = {
+    easy:   { cols: 9,  rows: 9,  mines: 10 },
+    medium: { cols: 16, rows: 16, mines: 40 },
+    hard:   { cols: 30, rows: 16, mines: 99 },
+};
+
+let cfg, grid, revealed, flagged, mineSet;
+let gameState = 'idle'; // idle | playing | won | lost
+let firstClick = true;
+let timerInterval, elapsed;
+let currentDiff = 'easy';
+
+const boardEl = document.getElementById('board');
+
+function cellKey(r,c) { return r * 100 + c; }
+
+function initGame() {
+    cfg = DIFF[currentDiff];
+    grid = Array.from({length: cfg.rows}, () => new Array(cfg.cols).fill(0));
+    revealed = new Set();
+    flagged  = new Set();
+    mineSet  = new Set();
+    firstClick = true;
+    gameState = 'idle';
+    clearInterval(timerInterval);
+    elapsed = 0;
+    document.getElementById('timer-label').textContent = '00:00';
+    document.getElementById('mines-left').textContent = cfg.mines;
+    document.getElementById('face-btn').textContent = '🙂';
+    renderBoard();
+    document.getElementById('overlay').style.display = 'none';
+}
+
+function placeMines(safeR, safeC) {
+    const safe = new Set();
+    for (let dr=-1; dr<=1; dr++) for (let dc=-1; dc<=1; dc++) {
+        const r=safeR+dr, c=safeC+dc;
+        if (r>=0&&r<cfg.rows&&c>=0&&c<cfg.cols) safe.add(cellKey(r,c));
+    }
+    while (mineSet.size < cfg.mines) {
+        const r = Math.floor(Math.random()*cfg.rows);
+        const c = Math.floor(Math.random()*cfg.cols);
+        const k = cellKey(r,c);
+        if (!safe.has(k)) mineSet.add(k);
+    }
+    for (let r=0;r<cfg.rows;r++) for (let c=0;c<cfg.cols;c++) {
+        if (mineSet.has(cellKey(r,c))) { grid[r][c]=-1; continue; }
+        let cnt=0;
+        for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++) {
+            const nr=r+dr, nc=c+dc;
+            if(nr>=0&&nr<cfg.rows&&nc>=0&&nc<cfg.cols&&mineSet.has(cellKey(nr,nc))) cnt++;
+        }
+        grid[r][c]=cnt;
+    }
+}
+
+function startTimer() {
+    timerInterval = setInterval(() => {
+        elapsed++;
+        const m = String(Math.floor(elapsed/60)).padStart(2,'0');
+        const s = String(elapsed%60).padStart(2,'0');
+        document.getElementById('timer-label').textContent = m+':'+s;
+    }, 1000);
+}
+
+function reveal(r, c) {
+    const k = cellKey(r,c);
+    if (r<0||r>=cfg.rows||c<0||c>=cfg.cols) return;
+    if (revealed.has(k)||flagged.has(k)) return;
+    revealed.add(k);
+    if (grid[r][c]===0) {
+        for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++) reveal(r+dr,c+dc);
+    }
+}
+
+function handleClick(r, c) {
+    if (gameState==='won'||gameState==='lost') return;
+    const k = cellKey(r,c);
+    if (flagged.has(k)) return;
+    if (revealed.has(k)) { chord(r,c); return; }
+
+    if (firstClick) {
+        firstClick=false; gameState='playing';
+        placeMines(r,c);
+        startTimer();
+    }
+    if (mineSet.has(k)) { boom(r,c); return; }
+    reveal(r,c);
+    checkWin();
+    renderBoard();
+}
+
+function chord(r, c) {
+    const k = cellKey(r,c);
+    if (!revealed.has(k) || grid[r][c]<=0) return;
+    let flagCount=0;
+    for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++) {
+        if(flagged.has(cellKey(r+dr,c+dc))) flagCount++;
+    }
+    if (flagCount !== grid[r][c]) return;
+    let hitMine = false;
+    for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++) {
+        const nr=r+dr,nc=c+dc;
+        if(nr<0||nr>=cfg.rows||nc<0||nc>=cfg.cols) continue;
+        const nk=cellKey(nr,nc);
+        if(!flagged.has(nk)&&!revealed.has(nk)&&mineSet.has(nk)){hitMine=true;boom(nr,nc);break;}
+    }
+    if(!hitMine){
+        for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++) reveal(r+dr,c+dc);
+        checkWin(); renderBoard();
+    }
+}
+
+function toggleFlag(r, c) {
+    if (gameState==='won'||gameState==='lost') return;
+    if (firstClick) return;
+    const k = cellKey(r,c);
+    if (revealed.has(k)) return;
+    if (flagged.has(k)) flagged.delete(k); else flagged.add(k);
+    document.getElementById('mines-left').textContent = cfg.mines - flagged.size;
+    renderBoard();
+}
+
+function boom(r, c) {
+    gameState='lost';
+    clearInterval(timerInterval);
+    document.getElementById('face-btn').textContent = '😵';
+    // reveal all mines
+    mineSet.forEach(k => {
+        const mr=Math.floor(k/100), mc=k%100;
+        revealed.add(k);
+        const el=boardEl.children[mr*cfg.cols+mc];
+        if(el) el.classList.add(cellKey(mr,mc)===cellKey(r,c)?'mine-hit':'revealed');
+    });
+    renderBoard();
+    setTimeout(()=>{
+        const ov=document.getElementById('overlay');
+        ov.querySelector('h2').textContent='💥 Подорвался!';
+        ov.querySelector('p').textContent='Попробуй ещё раз';
+        ov.querySelector('button').textContent='Ещё раз';
+        ov.style.display='flex';
+    },600);
+}
+
+function checkWin() {
+    const total = cfg.rows * cfg.cols;
+    if (revealed.size === total - cfg.mines) {
+        gameState='won';
+        clearInterval(timerInterval);
+        document.getElementById('face-btn').textContent='😎';
+        const key='ms_best_'+currentDiff;
+        const prev=parseInt(localStorage.getItem(key)||'99999');
+        if(elapsed<prev) localStorage.setItem(key, elapsed);
+        const best=localStorage.getItem(key);
+        const bm=String(Math.floor(best/60)).padStart(2,'0');
+        const bs=String(best%60).padStart(2,'0');
+        document.getElementById('best-label').textContent=bm+':'+bs;
+        setTimeout(()=>{
+            const ov=document.getElementById('overlay');
+            ov.querySelector('h2').textContent='🎉 Победа!';
+            const m=String(Math.floor(elapsed/60)).padStart(2,'0');
+            const s=String(elapsed%60).padStart(2,'0');
+            ov.querySelector('p').textContent='Время: '+m+':'+s;
+            ov.querySelector('button').textContent='Ещё раз';
+            ov.style.display='flex';
+        },400);
+    }
+}
+
+function cellContent(r, c) {
+    const k=cellKey(r,c);
+    if (flagged.has(k)) return '🚩';
+    if (!revealed.has(k)) return '';
+    if (mineSet.has(k)) return '💣';
+    if (grid[r][c]>0) return grid[r][c];
+    return '';
+}
+
+function renderBoard() {
+    boardEl.style.gridTemplateColumns = `repeat(${cfg.cols}, 1fr)`;
+    // diff: only update changed cells if board already built
+    if (boardEl.children.length !== cfg.rows * cfg.cols) {
+        boardEl.innerHTML = '';
+        for (let r=0;r<cfg.rows;r++) for (let c=0;c<cfg.cols;c++) {
+            const el = document.createElement('div');
+            el.className = 'cell';
+            el.dataset.r=r; el.dataset.c=c;
+            boardEl.appendChild(el);
+        }
+    }
+    for (let r=0;r<cfg.rows;r++) for (let c=0;c<cfg.cols;c++) {
+        const el = boardEl.children[r*cfg.cols+c];
+        const k=cellKey(r,c);
+        const isRev=revealed.has(k), isFlag=flagged.has(k);
+        el.className = 'cell' + (isRev?' revealed':'') + (isFlag?' flagged':'');
+        const v = grid[r][c];
+        if(isRev&&mineSet.has(k)) el.className+=' mine-hit';
+        const content = cellContent(r,c);
+        el.textContent = content;
+        if(isRev&&v>0&&!mineSet.has(k)) el.classList.add('n'+v);
+    }
+}
+
+// Board events — attached once, work via delegation regardless of board rebuilds
+(function () {
+    let tEl = null, tX = 0, tY = 0, tStart = 0, tMoved = false;
+    // touchHandled blocks both `click` and `contextmenu` that Android fires
+    // after touchend (so flag doesn't appear then immediately disappear)
+    let touchHandled = false;
+
+    boardEl.addEventListener('click', e => {
+        if (touchHandled) { touchHandled = false; return; }
+        const el = e.target.closest('.cell'); if (!el) return;
+        handleClick(+el.dataset.r, +el.dataset.c);
+    });
+    boardEl.addEventListener('contextmenu', e => {
+        e.preventDefault();
+        // tEl is set   → contextmenu fired during active touch (before touchend) → skip,
+        //                 touchend will handle it based on elapsed time
+        // touchHandled → touchend already ran and set the flag → skip (contextmenu after touchend)
+        // neither       → pure mouse right-click → toggle flag
+        if (tEl || touchHandled) { touchHandled = false; return; }
+        const el = e.target.closest('.cell'); if (!el) return;
+        toggleFlag(+el.dataset.r, +el.dataset.c);
+    });
+
+    boardEl.addEventListener('touchstart', e => {
+        touchHandled = false;
+        const el = e.target.closest('.cell'); if (!el) return;
+        tEl = el; tX = e.touches[0].clientX; tY = e.touches[0].clientY;
+        tStart = Date.now(); tMoved = false;
+    }, {passive: true});
+
+    boardEl.addEventListener('touchmove', e => {
+        if (!tEl) return;
+        if (Math.abs(e.touches[0].clientX - tX) > 12 ||
+            Math.abs(e.touches[0].clientY - tY) > 12) tMoved = true;
+    }, {passive: true});
+
+    boardEl.addEventListener('touchend', () => {
+        if (!tEl) return;
+        const el = tEl; tEl = null;
+        if (tMoved) return;
+        touchHandled = true;
+        const r = +el.dataset.r, c = +el.dataset.c;
+        if (Date.now() - tStart >= 380) toggleFlag(r, c);
+        else handleClick(r, c);
+    }, {passive: true});
+
+    boardEl.addEventListener('touchcancel', () => { tEl = null; }, {passive: true});
+}());
+
+document.getElementById('face-btn').addEventListener('click', initGame);
+document.getElementById('start-btn').addEventListener('click', initGame);
+
+document.querySelectorAll('.diff-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+        currentDiff=btn.dataset.diff;
+        document.querySelectorAll('.diff-btn').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        const key='ms_best_'+currentDiff;
+        const best=localStorage.getItem(key);
+        if(best){
+            const bm=String(Math.floor(best/60)).padStart(2,'0');
+            const bs=String(best%60).padStart(2,'0');
+            document.getElementById('best-label').textContent=bm+':'+bs;
+        } else document.getElementById('best-label').textContent='—';
+        initGame();
+    });
+});
+
+// Load best
+const bestVal=localStorage.getItem('ms_best_easy');
+if(bestVal){
+    const bm=String(Math.floor(bestVal/60)).padStart(2,'0');
+    const bs=String(bestVal%60).padStart(2,'0');
+    document.getElementById('best-label').textContent=bm+':'+bs;
+}
+
+// show initial overlay
+document.getElementById('overlay').style.display='flex';
+cfg=DIFF[currentDiff];
+boardEl.style.gridTemplateColumns=`repeat(${cfg.cols},1fr)`;
+</script>
+</body>
+</html>

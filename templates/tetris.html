@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Тетрис</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background: #11111b;
+    color: #cdd6f4;
+    font-family: system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    overflow: hidden;
+    touch-action: none;
+    user-select: none;
+}
+#top-bar {
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px 4px;
+    font-size: 14px;
+    color: #a6adc8;
+}
+#top-bar a { color: #89b4fa; text-decoration: none; font-size: 13px; }
+#main {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 6px 12px;
+}
+canvas#board {
+    border: 2px solid #313244;
+    border-radius: 4px;
+    background: #1e1e2e;
+    display: block;
+}
+#side {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 80px;
+}
+.panel {
+    background: #1e1e2e;
+    border: 1px solid #313244;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+    color: #a6adc8;
+}
+.panel h4 { font-size: 11px; color: #6c7086; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+.panel .val { font-size: 20px; font-weight: 700; color: #cba6f7; }
+canvas#next { display: block; margin: 0 auto; }
+
+/* Controls */
+#controls {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 10px 12px 16px;
+    width: 100%;
+    max-width: 280px;
+}
+.btn {
+    background: #1e1e2e;
+    border: 1px solid #45475a;
+    border-radius: 12px;
+    color: #cdd6f4;
+    font-size: 22px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    active: background: #313244;
+}
+.btn:active { background: #313244; }
+.btn-wide { grid-column: span 3; height: 48px; font-size: 14px; letter-spacing: 0.05em; }
+
+#overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 16px; z-index: 100;
+}
+#overlay h2 { font-size: 28px; color: #cba6f7; }
+#overlay p { color: #a6adc8; font-size: 14px; }
+#overlay button {
+    background: #cba6f7; color: #1e1e2e;
+    border: none; border-radius: 20px;
+    padding: 12px 32px; font-size: 16px; font-weight: 700;
+    cursor: pointer;
+}
+
+@media (min-width: 600px) {
+    #controls { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div id="top-bar">
+    <a href="/">← Меню</a>
+    <span id="level-label">Уровень 1</span>
+</div>
+
+<div id="main">
+    <canvas id="board"></canvas>
+    <div id="side">
+        <div class="panel">
+            <h4>Счёт</h4>
+            <div class="val" id="score">0</div>
+        </div>
+        <div class="panel">
+            <h4>Рекорд</h4>
+            <div class="val" id="best">0</div>
+        </div>
+        <div class="panel">
+            <h4>Следующая</h4>
+            <canvas id="next" width="60" height="60"></canvas>
+        </div>
+    </div>
+</div>
+
+<div id="controls">
+    <div class="btn" id="btn-left">◀</div>
+    <div class="btn" id="btn-rotate">↺</div>
+    <div class="btn" id="btn-right">▶</div>
+    <div class="btn" id="btn-down">▼</div>
+    <div class="btn" id="btn-drop">⬇</div>
+    <div class="btn" id="btn-pause">⏸</div>
+</div>
+
+<div id="overlay">
+    <h2>🎮 Тетрис</h2>
+    <p>Стрелки / свайп для управления</p>
+    <button id="start-btn">Начать</button>
+</div>
+
+<script>
+const COLS = 10, ROWS = 20;
+const COLORS = ['','#f38ba8','#fab387','#f9e2af','#a6e3a1','#89dceb','#89b4fa','#cba6f7'];
+const PIECES = [
+    [],
+    [[1,1,1,1]],
+    [[2,2],[2,2]],
+    [[0,3,0],[3,3,3]],
+    [[0,4,4],[4,4,0]],
+    [[5,5,0],[0,5,5]],
+    [[6,0,0],[6,6,6]],
+    [[0,0,7],[7,7,7]],
+];
+
+const boardCanvas = document.getElementById('board');
+const ctx = boardCanvas.getContext('2d');
+const nextCanvas = document.getElementById('next');
+const nCtx = nextCanvas.getContext('2d');
+
+let CELL, board, piece, pieceX, pieceY, pieceType, nextType;
+let score, level, lines, timer, paused, running;
+let lastMove = 0;
+
+let gridCanvas = null;
+let rafPending = false;
+
+function buildGrid() {
+    gridCanvas = document.createElement('canvas');
+    gridCanvas.width  = boardCanvas.width;
+    gridCanvas.height = boardCanvas.height;
+    const gc = gridCanvas.getContext('2d');
+    gc.strokeStyle = '#181825';
+    for (let r = 0; r < ROWS; r++)
+        for (let c = 0; c < COLS; c++)
+            gc.strokeRect(c*CELL, r*CELL, CELL, CELL);
+}
+
+function scheduleRender() {
+    if (!rafPending) { rafPending = true; requestAnimationFrame(() => { rafPending = false; draw(); }); }
+}
+
+function resize() {
+    const maxH = window.innerHeight - 180;
+    const maxW = window.innerWidth - 120;
+    CELL = Math.floor(Math.min(maxH / ROWS, maxW / COLS, 32));
+    boardCanvas.width  = COLS * CELL;
+    boardCanvas.height = ROWS * CELL;
+    buildGrid();
+    if (running) draw();
+}
+
+function newBoard() { return Array.from({length: ROWS}, () => new Array(COLS).fill(0)); }
+
+function randomPiece() { return 1 + Math.floor(Math.random() * 7); }
+
+function rotate(p) {
+    const R = p.length, C = p[0].length;
+    return Array.from({length: C}, (_, c) => Array.from({length: R}, (_, r) => p[R-1-r][c]));
+}
+
+function fits(brd, shape, x, y) {
+    for (let r = 0; r < shape.length; r++)
+        for (let c = 0; c < shape[r].length; c++)
+            if (shape[r][c]) {
+                const nr = y+r, nc = x+c;
+                if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS || brd[nr][nc]) return false;
+            }
+    return true;
+}
+
+function place() {
+    hitWall = false; lastSwipeDir = null;
+    cancelLock();
+    piece.forEach((row, r) => row.forEach((v, c) => { if(v) board[pieceY+r][pieceX+c] = v; }));
+    clearLines();
+    pieceType = nextType;
+    nextType = randomPiece();
+    piece = PIECES[pieceType];
+    pieceX = Math.floor((COLS - piece[0].length) / 2);
+    pieceY = 0;
+    if (!fits(board, piece, pieceX, pieceY)) gameOver();
+    drawNext();
+}
+
+function clearLines() {
+    let cleared = 0;
+    for (let r = ROWS-1; r >= 0; r--) {
+        if (board[r].every(v => v)) { board.splice(r,1); board.unshift(new Array(COLS).fill(0)); cleared++; r++; }
+    }
+    if (!cleared) return;
+    const pts = [0,100,300,500,800];
+    score += (pts[cleared] || 800) * level;
+    lines += cleared;
+    level = 1 + Math.floor(lines / 10);
+    document.getElementById('score').textContent = score;
+    document.getElementById('level-label').textContent = 'Уровень ' + level;
+    const best = parseInt(localStorage.getItem('tetris_best')||'0');
+    if (score > best) { localStorage.setItem('tetris_best', score); document.getElementById('best').textContent = score; }
+}
+
+// ── Lock delay ────────────────────────────────────────────────────────────────
+let lockTimer = null, locking = false, lockResets = 0;
+const LOCK_MS = 500, MAX_RESETS = 6;
+
+function startLock() {
+    locking = true;
+    clearTimeout(lockTimer);
+    lockTimer = setTimeout(() => { locking = false; lockTimer = null; lockResets = 0; place(); draw(); }, LOCK_MS);
+}
+function cancelLock() {
+    clearTimeout(lockTimer); lockTimer = null; locking = false; lockResets = 0;
+}
+function afterMove() {
+    if (!locking) return;
+    if (!fits(board, piece, pieceX, pieceY+1)) {
+        if (lockResets < MAX_RESETS) { lockResets++; startLock(); }
+    } else {
+        cancelLock(); // piece can now fall — let tick handle it
+    }
+}
+
+function drop() {
+    if (!running || paused) return;
+    if (fits(board, piece, pieceX, pieceY+1)) {
+        pieceY++;
+        if (locking) cancelLock();
+    } else {
+        if (!locking) startLock();
+    }
+    draw();
+}
+
+function hardDrop() {
+    cancelLock();
+    while (fits(board, piece, pieceX, pieceY+1)) pieceY++;
+    locking = true;
+    lockResets = MAX_RESETS; // no further resets
+    lockTimer = setTimeout(() => { locking = false; lockTimer = null; lockResets = 0; place(); draw(); }, 250);
+    draw();
+}
+
+function moveLeft() {
+    if (!running || paused) return false;
+    if (fits(board, piece, pieceX-1, pieceY)) { pieceX--; afterMove(); draw(); return true; }
+    return false;
+}
+function moveRight() {
+    if (!running || paused) return false;
+    if (fits(board, piece, pieceX+1, pieceY)) { pieceX++; afterMove(); draw(); return true; }
+    return false;
+}
+function doRotate() {
+    if (!running || paused) return 0;
+    const r = rotate(piece);
+    for (const kick of [0, -1, 1, -2, 2]) {
+        if (fits(board, r, pieceX + kick, pieceY)) {
+            piece = r; pieceX += kick; afterMove();
+            if (dasDir === 'left') moveLeft();
+            else if (dasDir === 'right') moveRight();
+            draw(); return kick;
+        }
+    }
+    return 0;
+}
+
+function draw() {
+    ctx.clearRect(0, 0, boardCanvas.width, boardCanvas.height);
+    // grid (pre-rendered)
+    if (gridCanvas) ctx.drawImage(gridCanvas, 0, 0);
+    // board
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+        if (board[r][c]) { ctx.fillStyle = COLORS[board[r][c]]; ctx.fillRect(c*CELL+1, r*CELL+1, CELL-2, CELL-2); }
+    }
+    // active piece
+    piece.forEach((row, r) => row.forEach((v, c) => {
+        if (v) { ctx.fillStyle = COLORS[v]; ctx.fillRect((pieceX+c)*CELL+1, (pieceY+r)*CELL+1, CELL-2, CELL-2); }
+    }));
+}
+
+function drawNext() {
+    const p = PIECES[nextType];
+    const cs = 12;
+    nCtx.clearRect(0,0,60,60);
+    const ox = Math.floor((5 - p[0].length) / 2);
+    const oy = Math.floor((5 - p.length) / 2);
+    p.forEach((row, r) => row.forEach((v, c) => {
+        if (v) { nCtx.fillStyle = COLORS[v]; nCtx.fillRect((ox+c)*cs+1, (oy+r)*cs+1, cs-2, cs-2); }
+    }));
+}
+
+function startGame() {
+    board = newBoard(); score = 0; level = 1; lines = 0; paused = false; running = true;
+    nextType = randomPiece();
+    pieceType = randomPiece();
+    piece = PIECES[pieceType];
+    pieceX = Math.floor((COLS - piece[0].length) / 2); pieceY = 0;
+    nextType = randomPiece();
+    document.getElementById('score').textContent = '0';
+    document.getElementById('level-label').textContent = 'Уровень 1';
+    document.getElementById('best').textContent = localStorage.getItem('tetris_best')||'0';
+    document.getElementById('overlay').style.display = 'none';
+    drawNext(); draw();
+    clearInterval(timer);
+    tick();
+}
+
+function tick() {
+    if (!running || paused) return;
+    if (!locking) drop();
+    const speed = Math.max(80, 600 - (level-1)*55);
+    timer = setTimeout(tick, speed);
+}
+
+function gameOver() {
+    running = false;
+    cancelLock();
+    clearTimeout(timer);
+    stopDAS(); stopSD();
+    const ov = document.getElementById('overlay');
+    ov.querySelector('h2').textContent = '💀 Игра окончена';
+    ov.querySelector('p').textContent = 'Счёт: ' + score;
+    ov.querySelector('button').textContent = 'Ещё раз';
+    ov.style.display = 'flex';
+}
+
+function togglePause() {
+    if (!running) return;
+    paused = !paused;
+    if (paused) { stopDAS(); stopSD(); } else tick();
+}
+
+// DAS (Delayed Auto Shift) — rAF-based, no drift
+const DAS_DELAY = 120;
+let dasDir = null, dasReady = false, dasStartTime = 0, dasRafId = null;
+let sdTimer = null;
+
+function dasLoop(ts) {
+    if (!dasDir || !running || paused) { dasRafId = null; return; }
+    if (!dasReady && ts - dasStartTime >= DAS_DELAY) dasReady = true;
+    if (dasReady) { if (dasDir === 'left') moveLeft(); else moveRight(); }
+    dasRafId = requestAnimationFrame(dasLoop);
+}
+function startDAS(dir) {
+    if (dasDir === dir) return;
+    stopDAS();
+    dasDir = dir; dasReady = false; dasStartTime = performance.now();
+    if (dir === 'left') moveLeft(); else moveRight();
+    dasRafId = requestAnimationFrame(dasLoop);
+}
+function stopDAS() {
+    if (dasRafId) { cancelAnimationFrame(dasRafId); dasRafId = null; }
+    dasDir = null; dasReady = false;
+}
+function startSD() {
+    if (sdTimer) return;
+    drop();
+    sdTimer = setInterval(drop, 40);
+}
+function stopSD() { clearInterval(sdTimer); sdTimer = null; }
+
+// Keyboard
+document.addEventListener('keydown', e => {
+    if (!running) return;
+    if (e.repeat) return; // подавляем OS-повтор, DAS сам справится
+    if (e.key === 'ArrowLeft')  startDAS('left');
+    if (e.key === 'ArrowRight') startDAS('right');
+    if (e.key === 'ArrowDown')  startSD();
+    if (e.key === 'ArrowUp')    { e.preventDefault(); doRotate(); }
+    if (e.key === ' ')          { e.preventDefault(); hardDrop(); }
+    if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') togglePause();
+});
+document.addEventListener('keyup', e => {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') stopDAS();
+    if (e.key === 'ArrowDown') stopSD();
+});
+
+// Touch / swipe — only on game canvas area, not on control buttons
+let tx0, ty0, ttime, touchOnBoard = false, touchMovedCols = 0, gestureDir = null;
+let lastSwipeDir = null, hitWall = false;
+
+document.addEventListener('touchstart', e => {
+    const t = e.touches[0]; tx0 = t.clientX; ty0 = t.clientY; ttime = Date.now();
+    touchOnBoard = !e.target.closest('#controls');
+    touchMovedCols = 0; gestureDir = null;
+}, {passive: true});
+document.addEventListener('touchmove', e => {
+    if (!running || paused || !touchOnBoard) return;
+    const t = e.touches[0];
+    const dx = t.clientX - tx0, dy = t.clientY - ty0;
+    const adx = Math.abs(dx), ady = Math.abs(dy);
+    if (!gestureDir && (adx > 10 || ady > 10)) gestureDir = adx > ady ? 'h' : 'v';
+    if (gestureDir !== 'h') return;
+    const targetCols = Math.round(dx / CELL);
+    const delta = targetCols - touchMovedCols;
+    if (delta > 0) {
+        lastSwipeDir = 'right';
+        for (let i = 0; i < delta; i++) {
+            if (moveRight()) { touchMovedCols++; hitWall = false; }
+            else { hitWall = true; break; }
+        }
+    } else if (delta < 0) {
+        lastSwipeDir = 'left';
+        for (let i = 0; i > delta; i--) {
+            if (moveLeft()) { touchMovedCols--; hitWall = false; }
+            else { hitWall = true; break; }
+        }
+    }
+}, {passive: true});
+document.addEventListener('touchend', e => {
+    if (!running || paused || !touchOnBoard) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - tx0, dy = t.clientY - ty0, dt = Date.now() - ttime;
+    if (gestureDir === 'v' && dy > 70 && dy / dt > 0.5) {
+        hardDrop();
+    } else if (gestureDir === 'v' && dy < -25) {
+        const kick = doRotate();
+        touchMovedCols += kick;
+        // после поворота прижать к стене, если до этого упёрлись в неё
+        if (hitWall && lastSwipeDir === 'right') {
+            while (moveRight()) touchMovedCols++;
+        } else if (hitWall && lastSwipeDir === 'left') {
+            while (moveLeft()) touchMovedCols--;
+        }
+    }
+}, {passive: true});
+
+// Кнопки ◀ ▶ — DAS через touchstart/touchend
+const btnLeft  = document.getElementById('btn-left');
+const btnRight = document.getElementById('btn-right');
+btnLeft.addEventListener('touchstart',  e => { e.preventDefault(); startDAS('left');  }, {passive: false});
+btnRight.addEventListener('touchstart', e => { e.preventDefault(); startDAS('right'); }, {passive: false});
+btnLeft.addEventListener('touchend',  stopDAS);
+btnRight.addEventListener('touchend', stopDAS);
+// Fallback для мыши
+btnLeft.addEventListener('mousedown',  () => startDAS('left'));
+btnRight.addEventListener('mousedown', () => startDAS('right'));
+document.addEventListener('mouseup', stopDAS);
+
+document.getElementById('btn-rotate').addEventListener('click', doRotate);
+document.getElementById('btn-down').addEventListener('click',   drop);
+document.getElementById('btn-drop').addEventListener('click',   hardDrop);
+document.getElementById('btn-pause').addEventListener('click',  togglePause);
+
+document.getElementById('start-btn').addEventListener('click', startGame);
+
+window.addEventListener('resize', resize);
+resize();
+document.getElementById('best').textContent = localStorage.getItem('tetris_best')||'0';
+</script>
+</body>
+</html>

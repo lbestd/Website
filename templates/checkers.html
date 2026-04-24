@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Шашки</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background: #11111b;
+    color: #cdd6f4;
+    font-family: system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    overflow-x: hidden;
+}
+
+#top-bar {
+    width: 100%;
+    max-width: 520px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px 6px;
+    font-size: 14px;
+    color: #a6adc8;
+}
+#top-bar a { color: #89b4fa; text-decoration: none; font-size: 13px; }
+#turn-label {
+    font-size: 14px;
+    color: #cdd6f4;
+    font-weight: 600;
+}
+#status {
+    font-size: 12px;
+    color: #f9e2af;
+    min-height: 18px;
+    padding: 0 16px 4px;
+    text-align: center;
+}
+
+#canvas-wrap {
+    padding: 4px 8px 16px;
+    touch-action: none;
+}
+canvas {
+    display: block;
+    border-radius: 10px;
+    border: 2px solid #313244;
+    cursor: pointer;
+    touch-action: none;
+}
+
+/* ---- Overlay ---- */
+#overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.72);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+#overlay-card {
+    background: #1e1e2e;
+    border: 1px solid #45475a;
+    border-radius: 22px;
+    padding: 28px 24px 24px;
+    min-width: 270px;
+    max-width: 320px;
+    width: 88vw;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+#overlay-card h2 {
+    font-size: 22px;
+    font-weight: 700;
+    color: #cdd6f4;
+    text-align: center;
+}
+.ov-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+.ov-section label {
+    font-size: 11px;
+    color: #a6adc8;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    align-self: flex-start;
+}
+.mode-btn {
+    width: 100%;
+    padding: 12px 0;
+    border-radius: 14px;
+    border: 1.5px solid #45475a;
+    background: #181825;
+    color: #cdd6f4;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+}
+.mode-btn:hover { background: #313244; border-color: #6c7086; }
+.mode-btn.selected { background: #89b4fa; color: #1e1e2e; border-color: #89b4fa; }
+
+.mode-btn-secondary {
+    width: 100%;
+    padding: 9px 0;
+    border-radius: 14px;
+    border: 1px solid #313244;
+    background: transparent;
+    color: #89b4fa;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+.mode-btn-secondary:hover { background: rgba(137,180,250,0.08); color: #b4befe; }
+.mode-btn-secondary.selected {
+    background: rgba(137,180,250,0.14);
+    border-color: #89b4fa;
+    color: #b4befe;
+    text-decoration: none;
+}
+
+.diff-row {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+}
+.diff-btn {
+    flex: 1;
+    padding: 9px 0;
+    border-radius: 12px;
+    border: 1.5px solid #45475a;
+    background: #181825;
+    color: #a6adc8;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+}
+.diff-btn:hover { background: #313244; }
+.diff-btn.selected { background: #cba6f7; color: #1e1e2e; border-color: #cba6f7; }
+
+.start-btn {
+    width: 100%;
+    padding: 13px 0;
+    border-radius: 14px;
+    border: none;
+    background: #a6e3a1;
+    color: #1e1e2e;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+}
+.start-btn:hover { background: #b6f0b0; }
+
+.result-emoji { font-size: 42px; }
+.result-title { font-size: 22px; font-weight: 700; color: #cdd6f4; }
+.result-sub   { font-size: 13px; color: #a6adc8; }
+
+.restart-btn {
+    width: 100%;
+    padding: 13px 0;
+    border-radius: 14px;
+    border: none;
+    background: #cba6f7;
+    color: #1e1e2e;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.15s;
+}
+.restart-btn:hover { background: #d5b8ff; }
+
+#diff-section { transition: opacity 0.2s; }
+</style>
+</head>
+<body>
+
+<div id="top-bar">
+    <a href="/">← Меню</a>
+    <span id="turn-label">Ваш ход</span>
+</div>
+<div id="status"></div>
+
+<div id="canvas-wrap">
+    <canvas id="board" width="352" height="352"></canvas>
+</div>
+
+<div id="overlay">
+    <div id="overlay-card"><!-- filled by JS --></div>
+</div>
+
+<script>
+/* ============================================================
+   BOARD REPRESENTATION
+   0 = empty
+   1 = white man   (human / player 1 — bottom, moves up)
+   2 = black man   (AI    / player 2 — top,    moves down)
+   3 = white king
+   4 = black king
+   ============================================================ */
+
+const EMPTY=0, WHITE=1, BLACK=2, WKING=3, BKING=4;
+const SZ = 352;
+const CELL = SZ / 8;
+
+const canvas  = document.getElementById('board');
+const ctx     = canvas.getContext('2d');
+const overlay = document.getElementById('overlay');
+const card    = document.getElementById('overlay-card');
+const turnLbl = document.getElementById('turn-label');
+const statusEl= document.getElementById('status');
+
+// ---- helpers ----
+const isWhitePiece = p => p===WHITE||p===WKING;
+const isBlackPiece = p => p===BLACK||p===BKING;
+const isKing       = p => p===WKING||p===BKING;
+const cloneBoard   = b => b.map(r=>r.slice());
+
+// ---- state ----
+let board       = [];
+let turn        = 'white';
+let selected    = null;   // {r,c}
+let validMoves  = [];     // [{board, fromR, fromC, toR, toC, path}]
+let gameMode    = 'ai';
+let difficulty  = 'medium';
+let gameRunning = false;
+let aiThinking  = false;
+
+// ---- board init ----
+function initBoard() {
+    board = Array.from({length:8}, ()=>new Array(8).fill(EMPTY));
+    for (let r=0; r<3; r++)
+        for (let c=0; c<8; c++)
+            if ((r+c)%2===1) board[r][c]=BLACK;
+    for (let r=5; r<8; r++)
+        for (let c=0; c<8; c++)
+            if ((r+c)%2===1) board[r][c]=WHITE;
+}
+
+// ---- promotion ----
+function promoteIfNeeded(r, c, b) {
+    if (b[r][c]===WHITE && r===0) b[r][c]=WKING;
+    if (b[r][c]===BLACK && r===7) b[r][c]=BKING;
+}
+
+// ---- capture sequence generation ----
+// Returns array of {board, toR, toC, path} representing all terminal board
+// states reachable via one or more jumps from (r,c) on board b.
+function genCapSeqs(r, c, b) {
+    const piece = b[r][c];
+    if (!piece) return [];
+    const white = isWhitePiece(piece);
+    const king  = isKing(piece);
+    const DIRS  = [[-1,-1],[-1,1],[1,-1],[1,1]];
+    const results = [];
+
+    function dfs(r, c, curB, path) {
+        let foundAny = false;
+
+        for (const [dr,dc] of DIRS) {
+            if (king) {
+                // Scan diagonal for first enemy, then all empty landing squares beyond
+                let sr=r+dr, sc=c+dc;
+                while (sr>=0&&sr<8&&sc>=0&&sc<8) {
+                    const sp=curB[sr][sc];
+                    if (sp===EMPTY) { sr+=dr; sc+=dc; continue; }
+                    if ((white&&isWhitePiece(sp))||(!white&&isBlackPiece(sp))) break;
+                    // enemy at (sr,sc)
+                    const er=sr, ec=sc;
+                    let lr=er+dr, lc=ec+dc;
+                    while (lr>=0&&lr<8&&lc>=0&&lc<8&&curB[lr][lc]===EMPTY) {
+                        foundAny=true;
+                        const nb=cloneBoard(curB);
+                        nb[r][c]=EMPTY; nb[er][ec]=EMPTY; nb[lr][lc]=piece;
+                        const np=[...path,{r:lr,c:lc}];
+                        const sub=[]; dfs2(lr,lc,nb,np,sub);
+                        if (sub.length===0) {
+                            const final=cloneBoard(nb);
+                            promoteIfNeeded(lr,lc,final);
+                            results.push({board:final,toR:lr,toC:lc,path:np});
+                        } else results.push(...sub);
+                        lr+=dr; lc+=dc;
+                    }
+                    break;
+                }
+            } else {
+                const mr=r+dr, mc=c+dc, lr=r+2*dr, lc=c+2*dc;
+                if (lr<0||lr>=8||lc<0||lc>=8) continue;
+                if (curB[lr][lc]!==EMPTY) continue;
+                const mid=curB[mr][mc];
+                if (!mid) continue;
+                if ((white&&!isBlackPiece(mid))||(!white&&!isWhitePiece(mid))) continue;
+                foundAny=true;
+                const nb=cloneBoard(curB);
+                nb[r][c]=EMPTY; nb[mr][mc]=EMPTY; nb[lr][lc]=piece;
+                const np=[...path,{r:lr,c:lc}];
+                const sub=[]; dfs2(lr,lc,nb,np,sub);
+                if (sub.length===0) {
+                    const final=cloneBoard(nb);
+                    promoteIfNeeded(lr,lc,final);
+                    results.push({board:final,toR:lr,toC:lc,path:np});
+                } else results.push(...sub);
+            }
+        }
+    }
+
+    // dfs2 fills `out` array instead of returning, avoids closure allocation issues
+    function dfs2(r, c, curB, path, out) {
+        const piece2=curB[r][c];
+        if(!piece2) return;
+        const white2=isWhitePiece(piece2);
+        const king2=isKing(piece2);
+        let foundAny=false;
+
+        for (const [dr,dc] of DIRS) {
+            if (king2) {
+                let sr=r+dr, sc=c+dc;
+                while (sr>=0&&sr<8&&sc>=0&&sc<8) {
+                    const sp=curB[sr][sc];
+                    if (sp===EMPTY) { sr+=dr; sc+=dc; continue; }
+                    if ((white2&&isWhitePiece(sp))||(!white2&&isBlackPiece(sp))) break;
+                    const er=sr, ec=sc;
+                    let lr=er+dr, lc=ec+dc;
+                    while (lr>=0&&lr<8&&lc>=0&&lc<8&&curB[lr][lc]===EMPTY) {
+                        foundAny=true;
+                        const nb=cloneBoard(curB);
+                        nb[r][c]=EMPTY; nb[er][ec]=EMPTY; nb[lr][lc]=piece2;
+                        const np=[...path,{r:lr,c:lc}];
+                        const sub=[]; dfs2(lr,lc,nb,np,sub);
+                        if (sub.length===0) {
+                            const final=cloneBoard(nb);
+                            promoteIfNeeded(lr,lc,final);
+                            out.push({board:final,toR:lr,toC:lc,path:np});
+                        } else out.push(...sub);
+                        lr+=dr; lc+=dc;
+                    }
+                    break;
+                }
+            } else {
+                const mr=r+dr, mc=c+dc, lr=r+2*dr, lc=c+2*dc;
+                if (lr<0||lr>=8||lc<0||lc>=8) continue;
+                if (curB[lr][lc]!==EMPTY) continue;
+                const mid=curB[mr][mc];
+                if (!mid) continue;
+                if ((white2&&!isBlackPiece(mid))||(!white2&&!isWhitePiece(mid))) continue;
+                foundAny=true;
+                const nb=cloneBoard(curB);
+                nb[r][c]=EMPTY; nb[mr][mc]=EMPTY; nb[lr][lc]=piece2;
+                const np=[...path,{r:lr,c:lc}];
+                const sub=[]; dfs2(lr,lc,nb,np,sub);
+                if (sub.length===0) {
+                    const final=cloneBoard(nb);
+                    promoteIfNeeded(lr,lc,final);
+                    out.push({board:final,toR:lr,toC:lc,path:np});
+                } else out.push(...sub);
+            }
+        }
+    }
+
+    dfs(r, c, b, [{r,c}]);
+    return results;
+}
+
+// Normal (non-capture) moves from (r,c)
+function genNormalMoves(r, c, b) {
+    const piece=b[r][c];
+    if (!piece) return [];
+    const white=isWhitePiece(piece);
+    const king=isKing(piece);
+    const DIRS=[[-1,-1],[-1,1],[1,-1],[1,1]];
+    const fwdDirs = white ? [[-1,-1],[-1,1]] : [[1,-1],[1,1]];
+    const dirs = king ? DIRS : fwdDirs;
+    const results=[];
+
+    for (const [dr,dc] of dirs) {
+        if (king) {
+            let nr=r+dr, nc=c+dc;
+            while (nr>=0&&nr<8&&nc>=0&&nc<8) {
+                if (b[nr][nc]!==EMPTY) break;
+                const nb=cloneBoard(b);
+                nb[r][c]=EMPTY; nb[nr][nc]=piece;
+                promoteIfNeeded(nr,nc,nb);
+                results.push({board:nb,toR:nr,toC:nc,path:[{r,c},{r:nr,c:nc}]});
+                nr+=dr; nc+=dc;
+            }
+        } else {
+            const nr=r+dr, nc=c+dc;
+            if (nr<0||nr>=8||nc<0||nc>=8) continue;
+            if (b[nr][nc]!==EMPTY) continue;
+            const nb=cloneBoard(b);
+            nb[r][c]=EMPTY; nb[nr][nc]=piece;
+            promoteIfNeeded(nr,nc,nb);
+            results.push({board:nb,toR:nr,toC:nc,path:[{r,c},{r:nr,c:nc}]});
+        }
+    }
+    return results;
+}
+
+// All legal moves for color — mandatory captures first
+function generateAllMoves(b, color) {
+    const ps=[];
+    for (let r=0;r<8;r++) for (let c=0;c<8;c++) {
+        const p=b[r][c];
+        if ((color==='white'&&isWhitePiece(p))||(color==='black'&&isBlackPiece(p)))
+            ps.push({r,c});
+    }
+    const caps=[];
+    for (const {r,c} of ps) {
+        const seqs=genCapSeqs(r,c,b);
+        for (const s of seqs) caps.push({...s,fromR:r,fromC:c});
+    }
+    if (caps.length>0) return caps;
+    const normals=[];
+    for (const {r,c} of ps) {
+        const ms=genNormalMoves(r,c,b);
+        for (const m of ms) normals.push({...m,fromR:r,fromC:c});
+    }
+    return normals;
+}
+
+// ---- Evaluation (from Black's perspective) ----
+function evalBoard(b) {
+    let score=0;
+    for (let r=0;r<8;r++) for (let c=0;c<8;c++) {
+        const p=b[r][c];
+        if (!p) continue;
+        const cx=Math.min(c,7-c), cy=Math.min(r,7-r);
+        const center=(cx+cy)*0.04;
+        if      (p===WHITE) score -= 1 + center + (7-r)*0.03;
+        else if (p===BLACK) score += 1 + center + r*0.03;
+        else if (p===WKING) score -= 2.5 + center;
+        else if (p===BKING) score += 2.5 + center;
+    }
+    return score;
+}
+
+// ---- Minimax alpha-beta ----
+function minimax(b, depth, alpha, beta, isMax) {
+    const color=isMax?'black':'white';
+    const moves=generateAllMoves(b,color);
+    if (moves.length===0) return isMax ? -1000 : 1000;
+    if (depth===0) return evalBoard(b);
+    if (isMax) {
+        let best=-Infinity;
+        for (const m of moves) {
+            const v=minimax(m.board,depth-1,alpha,beta,false);
+            if (v>best) best=v;
+            if (v>alpha) alpha=v;
+            if (beta<=alpha) break;
+        }
+        return best;
+    } else {
+        let best=Infinity;
+        for (const m of moves) {
+            const v=minimax(m.board,depth-1,alpha,beta,true);
+            if (v<best) best=v;
+            if (v<beta) beta=v;
+            if (beta<=alpha) break;
+        }
+        return best;
+    }
+}
+
+function getBestBoard(diff) {
+    const moves=generateAllMoves(board,'black');
+    if (!moves.length) return null;
+    if (diff==='easy') return moves[Math.floor(Math.random()*moves.length)];
+    const depth=diff==='hard'?6:3;
+    let best=-Infinity, bestMoves=[];
+    for (const m of moves) {
+        const v=minimax(m.board,depth-1,-Infinity,Infinity,false);
+        if (v>best) { best=v; bestMoves=[m]; }
+        else if (v===best) bestMoves.push(m);
+    }
+    return bestMoves[Math.floor(Math.random()*bestMoves.length)];
+}
+
+// ---- Win detection ----
+function checkWin(justMoved) {
+    const opp=justMoved==='white'?'black':'white';
+    return generateAllMoves(board,opp).length===0 ? justMoved : null;
+}
+
+// ---- Drawing ----
+function drawBoard() {
+    ctx.clearRect(0,0,SZ,SZ);
+
+    // squares
+    for (let r=0;r<8;r++) for (let c=0;c<8;c++) {
+        ctx.fillStyle=(r+c)%2===1?'#2a2a3d':'#3a3a52';
+        ctx.fillRect(c*CELL,r*CELL,CELL,CELL);
+    }
+
+    // highlights
+    if (selected) {
+        // selected piece
+        ctx.fillStyle='rgba(166,227,161,0.30)';
+        ctx.fillRect(selected.c*CELL,selected.r*CELL,CELL,CELL);
+        // valid targets
+        validMoves.forEach(vt=>{
+            ctx.fillStyle='rgba(137,180,250,0.28)';
+            ctx.fillRect(vt.toC*CELL,vt.toR*CELL,CELL,CELL);
+            // small dot indicator
+            ctx.beginPath();
+            ctx.arc(vt.toC*CELL+CELL/2, vt.toR*CELL+CELL/2, CELL*0.13, 0, Math.PI*2);
+            ctx.fillStyle='rgba(137,180,250,0.55)';
+            ctx.fill();
+        });
+    }
+
+    // pieces
+    for (let r=0;r<8;r++) for (let c=0;c<8;c++) {
+        const p=board[r][c];
+        if (p===EMPTY) continue;
+        drawPiece(r,c,p, selected&&selected.r===r&&selected.c===c);
+    }
+}
+
+function drawPiece(r, c, piece, sel) {
+    const x=c*CELL+CELL/2, y=r*CELL+CELL/2;
+    const rad=CELL*0.38;
+    const white=isWhitePiece(piece);
+
+    // shadow
+    ctx.beginPath();
+    ctx.arc(x,y+2,rad,0,Math.PI*2);
+    ctx.fillStyle='rgba(0,0,0,0.38)';
+    ctx.fill();
+
+    // body
+    const g=ctx.createRadialGradient(x-rad*0.28,y-rad*0.28,rad*0.04,x,y,rad);
+    if (white) {
+        g.addColorStop(0,'#e8e8f2'); g.addColorStop(1,'#9898b8');
+    } else {
+        g.addColorStop(0,'#555575'); g.addColorStop(1,'#18182a');
+    }
+    ctx.beginPath();
+    ctx.arc(x,y,rad,0,Math.PI*2);
+    ctx.fillStyle=g;
+    ctx.fill();
+
+    // border
+    ctx.strokeStyle = sel ? '#a6e3a1' : (white?'#6c7086':'#45475a');
+    ctx.lineWidth   = sel ? 2.5 : 1.5;
+    ctx.stroke();
+
+    // king crown
+    if (isKing(piece)) {
+        ctx.font=`bold ${Math.round(CELL*0.34)}px system-ui`;
+        ctx.textAlign='center';
+        ctx.textBaseline='middle';
+        ctx.fillStyle=white?'#89b4fa':'#f9e2af';
+        ctx.shadowColor=white?'#1e1e2e':'rgba(0,0,0,0.8)';
+        ctx.shadowBlur=2;
+        ctx.fillText('♛',x,y+1);
+        ctx.shadowBlur=0;
+    }
+}
+
+// ---- UI helpers ----
+function updateTurnLabel() {
+    if (!gameRunning) return;
+    if (gameMode==='ai') {
+        turnLbl.textContent=turn==='white'?'Ваш ход':'Ход компьютера';
+    } else {
+        turnLbl.textContent=turn==='white'?'Ход белых':'Ход чёрных';
+    }
+}
+function setStatus(msg) { statusEl.textContent=msg; }
+
+// ---- Overlays ----
+function showStartOverlay() {
+    gameRunning=false;
+    card.innerHTML=`
+        <h2>Шашки</h2>
+        <div class="ov-section">
+            <button class="mode-btn selected" id="ob-ai">Против компьютера</button>
+            <button class="mode-btn-secondary" id="ob-2p">Два игрока</button>
+        </div>
+        <div class="ov-section" id="diff-section">
+            <label>Сложность</label>
+            <div class="diff-row">
+                <button class="diff-btn" id="od-easy">Лёгкий</button>
+                <button class="diff-btn selected" id="od-medium">Средний</button>
+                <button class="diff-btn" id="od-hard">Сложный</button>
+            </div>
+        </div>
+        <button class="start-btn" id="ob-start">Начать игру</button>
+    `;
+    overlay.style.display='flex';
+
+    document.getElementById('ob-ai').onclick=()=>{
+        gameMode='ai';
+        document.getElementById('ob-ai').className='mode-btn selected';
+        document.getElementById('ob-2p').className='mode-btn-secondary';
+        document.getElementById('diff-section').style.opacity='1';
+        document.getElementById('diff-section').style.pointerEvents='';
+    };
+    document.getElementById('ob-2p').onclick=()=>{
+        gameMode='2p';
+        document.getElementById('ob-2p').className='mode-btn-secondary selected';
+        document.getElementById('ob-ai').className='mode-btn';
+        document.getElementById('diff-section').style.opacity='0.35';
+        document.getElementById('diff-section').style.pointerEvents='none';
+    };
+    ['easy','medium','hard'].forEach(d=>{
+        document.getElementById('od-'+d).onclick=()=>{
+            difficulty=d;
+            ['easy','medium','hard'].forEach(x=>{
+                document.getElementById('od-'+x).className='diff-btn'+(x===d?' selected':'');
+            });
+        };
+    });
+    document.getElementById('ob-start').onclick=startGame;
+}
+
+function showResultOverlay(emoji, title) {
+    gameRunning=false;
+    card.innerHTML=`
+        <div class="result-emoji">${emoji}</div>
+        <div class="result-title">${title}</div>
+        <div class="result-sub">Игра окончена</div>
+        <button class="restart-btn" id="ob-restart">Заново</button>
+    `;
+    overlay.style.display='flex';
+    document.getElementById('ob-restart').onclick=showStartOverlay;
+}
+
+function startGame() {
+    overlay.style.display='none';
+    initBoard();
+    turn='white'; selected=null; validMoves=[];
+    aiThinking=false; gameRunning=true;
+    updateTurnLabel(); setStatus('');
+    drawBoard();
+}
+
+// ---- Human click / tap ----
+function getCoords(e) {
+    const rect=canvas.getBoundingClientRect();
+    const sx=SZ/rect.width, sy=SZ/rect.height;
+    let cx,cy;
+    if (e.changedTouches) {
+        cx=(e.changedTouches[0].clientX-rect.left)*sx;
+        cy=(e.changedTouches[0].clientY-rect.top)*sy;
+    } else {
+        cx=(e.clientX-rect.left)*sx;
+        cy=(e.clientY-rect.top)*sy;
+    }
+    return {r:Math.floor(cy/CELL), c:Math.floor(cx/CELL)};
+}
+
+function handleInput(e) {
+    if (!gameRunning||aiThinking) return;
+    if (gameMode==='ai'&&turn==='black') return;
+    const {r,c}=getCoords(e);
+    if (r<0||r>=8||c<0||c>=8) return;
+
+    const color=turn;
+    const p=board[r][c];
+    const ownPiece=(color==='white'&&isWhitePiece(p))||(color==='black'&&isBlackPiece(p));
+
+    // Try selecting a target from validMoves
+    if (selected) {
+        const target=validMoves.find(vt=>vt.toR===r&&vt.toC===c);
+        if (target) {
+            board=target.board;
+            selected=null; validMoves=[];
+            drawBoard();
+            const winner=checkWin(color);
+            if (winner) {
+                gameRunning=false;
+                const emoji=winner==='white'?'🎉':'😈';
+                const title=gameMode==='ai'
+                    ?(winner==='white'?'Вы победили!':'Компьютер победил!')
+                    :(winner==='white'?'Белые победили!':'Чёрные победили!');
+                setTimeout(()=>showResultOverlay(emoji,title),300);
+                return;
+            }
+            turn=color==='white'?'black':'white';
+            setStatus('');
+            updateTurnLabel();
+            if (gameMode==='ai'&&turn==='black') scheduleAI();
+            return;
+        }
+    }
+
+    // Select piece
+    if (!ownPiece) {
+        const allMoves=generateAllMoves(board,color);
+        if (selected&&allMoves.length) setStatus('Выберите допустимый ход');
+        selected=null; validMoves=[]; drawBoard(); return;
+    }
+
+    const allMoves=generateAllMoves(board,color);
+    const pieceMoves=allMoves.filter(m=>m.fromR===r&&m.fromC===c);
+    if (!pieceMoves.length) {
+        setStatus('Выберите другую шашку');
+        selected=null; validMoves=[]; drawBoard(); return;
+    }
+
+    setStatus('');
+    selected={r,c};
+    // de-duplicate by destination
+    const seen=new Set();
+    validMoves=[];
+    for (const m of pieceMoves) {
+        const key=m.toR*8+m.toC;
+        if (!seen.has(key)) { seen.add(key); validMoves.push(m); }
+    }
+    drawBoard();
+}
+
+function scheduleAI() {
+    aiThinking=true;
+    setStatus('Компьютер думает...');
+    updateTurnLabel();
+    setTimeout(()=>{
+        const best=getBestBoard(difficulty);
+        if (!best) {
+            aiThinking=false; gameRunning=false;
+            showResultOverlay('🎉','Вы победили!');
+            return;
+        }
+        board=best.board; aiThinking=false;
+        drawBoard();
+        const winner=checkWin('black');
+        if (winner) {
+            gameRunning=false;
+            setTimeout(()=>showResultOverlay('😈','Компьютер победил!'),300);
+            return;
+        }
+        turn='white'; setStatus(''); updateTurnLabel();
+    },300);
+}
+
+// ---- Canvas resize ----
+function resizeCanvas() {
+    const maxW=window.innerWidth-16;
+    const maxH=window.innerHeight-90;
+    const size=Math.floor(Math.min(maxW,maxH,480)/8)*8;
+    canvas.style.width=size+'px';
+    canvas.style.height=size+'px';
+}
+
+// ---- Events ----
+canvas.addEventListener('click', handleInput);
+canvas.addEventListener('touchend', e=>{ e.preventDefault(); handleInput(e); }, {passive:false});
+window.addEventListener('resize', ()=>{ resizeCanvas(); drawBoard(); });
+
+resizeCanvas();
+initBoard();
+drawBoard();
+showStartOverlay();
+</script>
+</body>
+</html>

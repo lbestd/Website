@@ -1,3 +1,14 @@
-/venv2/
-/credentials.txt
-/.venv/
+venv/
+venv2/
+venv3/
+.venv/
+credentials.txt
+__pycache__/
+*.pyc
+*.pyo
+.idea/
+static/drawio/
+*.egg-info/
+dist/
+build/
+.env

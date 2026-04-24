@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Синтезатор</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #11111b; --surface: #1e1e2e; --s2: #181825;
+  --ov: #313244; --muted: #6c7086; --sub: #a6adc8;
+  --text: #cdd6f4; --mauve: #cba6f7; --blue: #89b4fa;
+  --green: #a6e3a1; --red: #f38ba8; --lav: #b4befe;
+}
+body {
+  background: var(--bg); color: var(--text);
+  font-family: system-ui, sans-serif;
+  display: flex; flex-direction: column;
+  height: 100dvh; overflow: hidden;
+  user-select: none;
+}
+
+/* TOP BAR */
+#top-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 12px; background: var(--surface);
+  border-bottom: 1px solid var(--ov);
+  flex-shrink: 0; height: 46px;
+}
+#top-bar a { color: var(--blue); text-decoration: none; font-size: 13px; }
+#app-title { font-size: 15px; font-weight: 700; color: var(--mauve); flex: 1; }
+#bpm-wrap { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--sub); }
+#bpm-val { color: var(--text); font-weight: 700; min-width: 26px; }
+input#bpm-range { width: 60px; accent-color: var(--mauve); cursor: pointer; }
+
+/* PRESET BAR */
+#preset-bar {
+  display: flex; gap: 5px; padding: 5px 10px;
+  overflow-x: auto; flex-shrink: 0; height: 38px;
+  background: var(--s2); scrollbar-width: none; align-items: center;
+}
+#preset-bar::-webkit-scrollbar { display: none; }
+.pbtn {
+  flex-shrink: 0; background: var(--ov);
+  border: 1px solid transparent; border-radius: 7px;
+  color: var(--sub); font-size: 11px; padding: 3px 9px;
+  cursor: pointer; white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.pbtn.on { border-color: var(--mauve); color: var(--mauve); background: #2a2040; }
+
+/* KEYBOARD */
+#kbd-wrap {
+  flex: 1; overflow-x: auto; overflow-y: hidden;
+  scrollbar-width: none; background: var(--s2); min-height: 0;
+  touch-action: none;
+}
+#kbd-wrap::-webkit-scrollbar { display: none; }
+#kbd { position: relative; height: 100%; display: inline-flex; align-items: stretch; }
+.kw {
+  background: #dde0f0; border: 1px solid #9a9cb0;
+  border-top: none; border-radius: 0 0 5px 5px;
+  cursor: pointer; flex-shrink: 0; position: relative;
+  -webkit-tap-highlight-color: transparent;
+}
+.kw.on { background: var(--mauve); }
+.kb {
+  position: absolute; background: #1a1a2c;
+  border: 1px solid #0d0d1e; border-top: none;
+  border-radius: 0 0 4px 4px; cursor: pointer;
+  z-index: 2; top: 0; -webkit-tap-highlight-color: transparent;
+}
+.kb.on { background: var(--blue); }
+.klbl {
+  position: absolute; bottom: 4px; left: 0; right: 0;
+  text-align: center; font-size: 8px; color: #8888a0; pointer-events: none;
+}
+
+/* LOOP BAR */
+#loop-bar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 10px; border-top: 1px solid var(--ov);
+  flex-shrink: 0; height: 42px;
+}
+.lbtn {
+  background: var(--ov); border: none; border-radius: 8px;
+  color: var(--text); font-size: 12px; padding: 5px 11px;
+  cursor: pointer; -webkit-tap-highlight-color: transparent; flex-shrink: 0;
+}
+.lbtn.rec-on { background: var(--red); color: var(--bg); animation: blink .7s infinite; }
+.lbtn.loop-on { background: var(--green); color: var(--bg); }
+@keyframes blink { 50%{opacity:.5} }
+#loop-st { font-size: 11px; color: var(--muted); flex: 1; }
+
+/* CONTROLS */
+#ctrl {
+  background: var(--surface); border-top: 1px solid var(--ov);
+  flex-shrink: 0; display: flex; flex-direction: column;
+  touch-action: manipulation;
+}
+#tabs { display: flex; border-bottom: 1px solid var(--ov); }
+.tbtn {
+  flex: 1; background: none; border: none; color: var(--muted);
+  font-size: 11px; padding: 7px 2px; cursor: pointer;
+  text-transform: uppercase; letter-spacing: .05em;
+  -webkit-tap-highlight-color: transparent;
+  border-bottom: 2px solid transparent;
+}
+.tbtn.on { color: var(--mauve); border-bottom-color: var(--mauve); }
+.tab { display: none; }
+.tab.on { display: block; }
+
+/* PARAM GRID */
+.pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; padding: 8px 12px; }
+.pr { display: flex; flex-direction: column; gap: 2px; }
+.ph { display: flex; justify-content: space-between; font-size: 10px; }
+.pl { color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.pv { color: var(--sub); }
+input[type=range].ps { width: 100%; accent-color: var(--mauve); cursor: pointer; height: 20px; }
+
+/* WAVE / TYPE BUTTONS */
+.wrow { display: flex; align-items: center; gap: 8px; padding: 7px 12px 0; flex-wrap: wrap; }
+.wlbl { font-size: 10px; color: var(--muted); text-transform: uppercase; flex-shrink: 0; }
+.wsel { display: flex; gap: 4px; }
+.wb {
+  background: var(--ov); border: 1px solid transparent; border-radius: 6px;
+  color: var(--sub); font-size: 13px; width: 33px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.wb.on { border-color: var(--mauve); color: var(--mauve); }
+.wb.sm { font-size: 10px; width: 36px; }
+
+/* PADS */
+#pads-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; padding: 8px 10px; }
+.pad {
+  background: var(--ov); border: 1px solid var(--ov); border-radius: 9px;
+  height: 52px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  cursor: pointer; font-size: 10px; color: var(--muted);
+  -webkit-tap-highlight-color: transparent; gap: 1px;
+}
+.pad.loaded { background: #2a2040; border-color: var(--mauve); color: var(--lav); }
+.pad.on { background: var(--mauve); color: var(--bg); }
+.pad-n { font-size: 12px; font-weight: 600; }
+.pad-i { font-size: 9px; }
+#pad-bar { padding: 4px 10px 8px; display: flex; gap: 8px; align-items: center; }
+</style>
+</head>
+<body>
+
+<div id="top-bar">
+  <a href="/">←</a>
+  <span id="app-title">Синтезатор</span>
+  <a href="/sampler" style="color:var(--sub);text-decoration:none;font-size:12px;flex-shrink:0">🥁 MPC</a>
+  <div id="bpm-wrap">
+    <span>BPM</span>
+    <input type="range" id="bpm-range" min="60" max="200" value="120">
+    <span id="bpm-val">120</span>
+  </div>
+</div>
+
+<div id="preset-bar"></div>
+<div id="kbd-wrap"><div id="kbd"></div></div>
+
+<div id="loop-bar">
+  <button class="lbtn" id="btn-rec">⏺ REC</button>
+  <button class="lbtn" id="btn-loop">▶ Loop</button>
+  <button class="lbtn" id="btn-clr">✕</button>
+  <span id="loop-st">нет записи</span>
+</div>
+
+<div id="ctrl">
+  <div id="tabs">
+    <button class="tbtn on" data-tab="osc">OSC</button>
+    <button class="tbtn" data-tab="env">ENV</button>
+    <button class="tbtn" data-tab="flt">FILTER</button>
+    <button class="tbtn" data-tab="fx">FX</button>
+    <button class="tbtn" data-tab="pads">PADS</button>
+  </div>
+
+  <div class="tab on" id="tab-osc">
+    <div class="wrow">
+      <span class="wlbl">Форма</span>
+      <div class="wsel">
+        <div class="wb on" data-wave="sawtooth">∿</div>
+        <div class="wb" data-wave="square">⊓</div>
+        <div class="wb" data-wave="sine">◯</div>
+        <div class="wb" data-wave="triangle">△</div>
+      </div>
+    </div>
+    <div class="pgrid">
+      <div class="pr"><div class="ph"><span class="pl">Детюн</span><span class="pv" id="v-dt">0</span></div><input type="range" class="ps" id="sl-dt" min="0" max="50" value="0"></div>
+      <div class="pr"><div class="ph"><span class="pl">Октава</span><span class="pv" id="v-oct">0</span></div><input type="range" class="ps" id="sl-oct" min="-2" max="2" value="0" step="1"></div>
+      <div class="pr"><div class="ph"><span class="pl">Голоса</span><span class="pv" id="v-vox">2</span></div><input type="range" class="ps" id="sl-vox" min="1" max="4" value="2" step="1"></div>
+      <div class="pr"><div class="ph"><span class="pl">Громкость</span><span class="pv" id="v-vol">70%</span></div><input type="range" class="ps" id="sl-vol" min="0" max="100" value="70"></div>
+    </div>
+  </div>
+
+  <div class="tab" id="tab-env">
+    <div class="pgrid">
+      <div class="pr"><div class="ph"><span class="pl">Attack</span><span class="pv" id="v-atk">10мс</span></div><input type="range" class="ps" id="sl-atk" min="0" max="2000" value="10"></div>
+      <div class="pr"><div class="ph"><span class="pl">Decay</span><span class="pv" id="v-dec">200мс</span></div><input type="range" class="ps" id="sl-dec" min="0" max="2000" value="200"></div>
+      <div class="pr"><div class="ph"><span class="pl">Sustain</span><span class="pv" id="v-sus">70%</span></div><input type="range" class="ps" id="sl-sus" min="0" max="100" value="70"></div>
+      <div class="pr"><div class="ph"><span class="pl">Release</span><span class="pv" id="v-rel">300мс</span></div><input type="range" class="ps" id="sl-rel" min="0" max="3000" value="300"></div>
+    </div>
+  </div>
+
+  <div class="tab" id="tab-flt">
+    <div class="wrow">
+      <span class="wlbl">Тип</span>
+      <div class="wsel">
+        <div class="wb sm on" data-ftype="lowpass">LP</div>
+        <div class="wb sm" data-ftype="highpass">HP</div>
+        <div class="wb sm" data-ftype="bandpass">BP</div>
+      </div>
+    </div>
+    <div class="pgrid">
+      <div class="pr"><div class="ph"><span class="pl">Cutoff</span><span class="pv" id="v-cut">18кГц</span></div><input type="range" class="ps" id="sl-cut" min="80" max="18000" value="18000"></div>
+      <div class="pr"><div class="ph"><span class="pl">Resonance</span><span class="pv" id="v-res">0</span></div><input type="range" class="ps" id="sl-res" min="0" max="30" value="0" step="0.5"></div>
+      <div class="pr"><div class="ph"><span class="pl">LFO Глубина</span><span class="pv" id="v-la">0</span></div><input type="range" class="ps" id="sl-la" min="0" max="100" value="0"></div>
+      <div class="pr"><div class="ph"><span class="pl">LFO Скорость</span><span class="pv" id="v-lr">4Гц</span></div><input type="range" class="ps" id="sl-lr" min="0.1" max="20" value="4" step="0.1"></div>
+    </div>
+  </div>
+
+  <div class="tab" id="tab-fx">
+    <div class="pgrid">
+      <div class="pr"><div class="ph"><span class="pl">Reverb</span><span class="pv" id="v-rev">20%</span></div><input type="range" class="ps" id="sl-rev" min="0" max="100" value="20"></div>
+      <div class="pr"><div class="ph"><span class="pl">Delay</span><span class="pv" id="v-dly">0%</span></div><input type="range" class="ps" id="sl-dly" min="0" max="100" value="0"></div>
+      <div class="pr"><div class="ph"><span class="pl">Delay Time</span><span class="pv" id="v-dtime">0.38с</span></div><input type="range" class="ps" id="sl-dtime" min="0.05" max="1" value="0.375" step="0.025"></div>
+      <div class="pr"><div class="ph"><span class="pl">Delay Fdbk</span><span class="pv" id="v-dfb">40%</span></div><input type="range" class="ps" id="sl-dfb" min="0" max="90" value="40"></div>
+      <div class="pr"><div class="ph"><span class="pl">Chorus</span><span class="pv" id="v-cho">0%</span></div><input type="range" class="ps" id="sl-cho" min="0" max="100" value="0"></div>
+      <div class="pr"><div class="ph"><span class="pl">Distortion</span><span class="pv" id="v-dis">0%</span></div><input type="range" class="ps" id="sl-dis" min="0" max="100" value="0"></div>
+    </div>
+  </div>
+
+  <div class="tab" id="tab-pads">
+    <div id="pads-grid"></div>
+    <div id="pad-bar">
+      <button class="lbtn" id="btn-pad-rec">🎤 Запись</button>
+      <span id="pad-st" style="font-size:11px;color:var(--muted)">Нажмите пэд для записи</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════ PRESETS ═══════════
+const PR = [
+  {n:'Init',        w:'sawtooth', dt:0,  o:0,  vx:2, vol:70, a:10,   d:200, s:70, r:300,  c:18000, q:0,  la:0,  lr:4,   rv:20, dy:0,  dt2:.375, df:40, ch:0,  ds:0,  ft:'lowpass'},
+  {n:'Lead: Saw',   w:'sawtooth', dt:8,  o:0,  vx:2, vol:70, a:5,    d:100, s:80, r:200,  c:8000,  q:4,  la:0,  lr:4,   rv:15, dy:15, dt2:.375, df:35, ch:20, ds:0,  ft:'lowpass'},
+  {n:'Lead: Square',w:'square',   dt:0,  o:0,  vx:1, vol:65, a:5,    d:80,  s:75, r:200,  c:6000,  q:3,  la:0,  lr:4,   rv:10, dy:20, dt2:.25,  df:40, ch:0,  ds:5,  ft:'lowpass'},
+  {n:'Lead: Dirty', w:'sawtooth', dt:15, o:0,  vx:2, vol:65, a:5,    d:100, s:80, r:150,  c:5000,  q:8,  la:0,  lr:4,   rv:10, dy:10, dt2:.375, df:30, ch:10, ds:40, ft:'lowpass'},
+  {n:'Whistle',     w:'sine',     dt:0,  o:1,  vx:1, vol:60, a:80,   d:100, s:70, r:400,  c:18000, q:0,  la:5,  lr:6,   rv:30, dy:20, dt2:.375, df:40, ch:0,  ds:0,  ft:'lowpass'},
+  {n:'Pad: Warm',   w:'sawtooth', dt:12, o:0,  vx:3, vol:60, a:600,  d:400, s:80, r:1200, c:2000,  q:2,  la:10, lr:2,   rv:70, dy:0,  dt2:.375, df:40, ch:40, ds:0,  ft:'lowpass'},
+  {n:'Pad: String', w:'sawtooth', dt:10, o:0,  vx:3, vol:55, a:400,  d:300, s:75, r:1500, c:4000,  q:1,  la:5,  lr:3,   rv:60, dy:15, dt2:.5,   df:35, ch:50, ds:0,  ft:'lowpass'},
+  {n:'Pad: Air',    w:'triangle', dt:5,  o:0,  vx:2, vol:50, a:1000, d:500, s:70, r:2000, c:3000,  q:0,  la:15, lr:1,   rv:80, dy:0,  dt2:.375, df:40, ch:60, ds:0,  ft:'lowpass'},
+  {n:'Pad: Dark',   w:'square',   dt:8,  o:-1, vx:2, vol:55, a:800,  d:400, s:60, r:2000, c:1200,  q:5,  la:20, lr:1,   rv:80, dy:0,  dt2:.375, df:40, ch:30, ds:10, ft:'lowpass'},
+  {n:'Bass: Sub',   w:'sine',     dt:0,  o:-2, vx:1, vol:80, a:5,    d:300, s:50, r:200,  c:300,   q:0,  la:0,  lr:4,   rv:5,  dy:0,  dt2:.375, df:40, ch:0,  ds:0,  ft:'lowpass'},
+  {n:'Bass: Acid',  w:'sawtooth', dt:0,  o:-1, vx:1, vol:75, a:5,    d:200, s:20, r:100,  c:800,   q:20, la:60, lr:3,   rv:10, dy:0,  dt2:.375, df:40, ch:0,  ds:20, ft:'lowpass'},
+  {n:'Bass: Pluck', w:'triangle', dt:0,  o:-1, vx:1, vol:75, a:5,    d:400, s:10, r:150,  c:2000,  q:8,  la:0,  lr:4,   rv:10, dy:0,  dt2:.375, df:40, ch:0,  ds:0,  ft:'lowpass'},
+  {n:'Bass: Growl', w:'sawtooth', dt:5,  o:-1, vx:2, vol:70, a:5,    d:150, s:60, r:200,  c:1500,  q:12, la:40, lr:4,   rv:15, dy:0,  dt2:.375, df:40, ch:0,  ds:30, ft:'lowpass'},
+  {n:'Pluck: Harp', w:'triangle', dt:0,  o:0,  vx:1, vol:70, a:5,    d:800, s:0,  r:500,  c:8000,  q:2,  la:0,  lr:4,   rv:40, dy:10, dt2:.25,  df:30, ch:0,  ds:0,  ft:'lowpass'},
+  {n:'Pluck: Bell', w:'sine',     dt:0,  o:1,  vx:1, vol:65, a:5,    d:1200,s:10, r:800,  c:18000, q:0,  la:0,  lr:4,   rv:50, dy:20, dt2:.5,   df:40, ch:0,  ds:0,  ft:'lowpass'},
+  {n:'Pluck: Gtr',  w:'sawtooth', dt:2,  o:0,  vx:2, vol:70, a:5,    d:600, s:20, r:300,  c:5000,  q:3,  la:0,  lr:4,   rv:20, dy:10, dt2:.375, df:25, ch:15, ds:5,  ft:'lowpass'},
+  {n:'Keys: Rhodes',w:'sine',     dt:3,  o:0,  vx:2, vol:70, a:5,    d:700, s:40, r:600,  c:10000, q:0,  la:8,  lr:5,   rv:30, dy:15, dt2:.375, df:30, ch:20, ds:0,  ft:'lowpass'},
+  {n:'Keys: Organ', w:'square',   dt:5,  o:0,  vx:2, vol:65, a:5,    d:0,   s:90, r:50,   c:8000,  q:0,  la:0,  lr:4,   rv:25, dy:0,  dt2:.375, df:40, ch:30, ds:0,  ft:'lowpass'},
+  {n:'FX: Wobble',  w:'sawtooth', dt:8,  o:0,  vx:2, vol:65, a:100,  d:200, s:70, r:300,  c:3000,  q:15, la:90, lr:4,   rv:20, dy:0,  dt2:.375, df:40, ch:0,  ds:15, ft:'lowpass'},
+  {n:'FX: Space',   w:'sine',     dt:20, o:0,  vx:3, vol:55, a:1500, d:1000,s:60, r:3000, c:2000,  q:5,  la:40, lr:.5,  rv:90, dy:30, dt2:.75,  df:70, ch:80, ds:0,  ft:'lowpass'},
+];
+
+// ═══════════ AUDIO ENGINE ═══════════
+let ac, master, filt, lfoOsc, lfoGain, conv, revG, dlyNode, dlyG, dlyFb, distNode, chorDly, chorLFO, chorLFOG, chorG;
+
+function initAC() {
+  if (ac) return;
+  ac = new (window.AudioContext || window.webkitAudioContext)();
+  master = ac.createGain(); master.gain.value = .7;
+
+  distNode = ac.createWaveShaper(); distNode.oversample = '4x'; setDist(0);
+  filt = ac.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = 18000;
+
+  lfoOsc = ac.createOscillator(); lfoOsc.type = 'sine'; lfoOsc.frequency.value = 4;
+  lfoGain = ac.createGain(); lfoGain.gain.value = 0;
+  lfoOsc.connect(lfoGain); lfoGain.connect(filt.frequency); lfoOsc.start();
+
+  conv = ac.createConvolver(); makeIR(2.5);
+  revG = ac.createGain(); revG.gain.value = .2;
+  const dry = ac.createGain(); dry.gain.value = 1;
+
+  dlyNode = ac.createDelay(2); dlyNode.delayTime.value = .375;
+  dlyG = ac.createGain(); dlyG.gain.value = 0;
+  dlyFb = ac.createGain(); dlyFb.gain.value = .4;
+  dlyNode.connect(dlyFb); dlyFb.connect(dlyNode); dlyNode.connect(dlyG); dlyG.connect(master);
+
+  chorDly = ac.createDelay(.05); chorDly.delayTime.value = .02;
+  chorLFO = ac.createOscillator(); chorLFO.frequency.value = .35; chorLFO.type = 'sine';
+  chorLFOG = ac.createGain(); chorLFOG.gain.value = 0;
+  chorLFO.connect(chorLFOG); chorLFOG.connect(chorDly.delayTime); chorLFO.start();
+  chorG = ac.createGain(); chorG.gain.value = 0;
+
+  // Signal chain: osc→env→dist→filt→[dry, chorus, reverb, delay]→master→out
+  distNode.connect(filt);
+  filt.connect(dry); filt.connect(conv); filt.connect(dlyNode); filt.connect(chorDly);
+  chorDly.connect(chorG); chorG.connect(master);
+  dry.connect(master); conv.connect(revG); revG.connect(master);
+  master.connect(ac.destination);
+}
+
+function makeIR(dur) {
+  const sr = ac.sampleRate, n = sr * dur, b = ac.createBuffer(2, n, sr);
+  for (let c = 0; c < 2; c++) {
+    const d = b.getChannelData(c);
+    for (let i = 0; i < n; i++) d[i] = (Math.random()*2-1) * Math.pow(1-i/n, 2);
+  }
+  conv.buffer = b;
+}
+
+function setDist(amt) {
+  const n = 256, k = amt * 5, curve = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = i*2/n - 1;
+    curve[i] = k ? (3+k)*x*20*Math.PI/180 / (Math.PI + k*Math.abs(x)) : x;
+  }
+  distNode.curve = curve;
+}
+
+function applyAudio() {
+  if (!ac) return;
+  filt.type = P.ft; filt.frequency.value = P.c; filt.Q.value = P.q;
+  lfoGain.gain.value = P.la * P.c * 0.04;
+  lfoOsc.frequency.value = P.lr;
+  revG.gain.value = P.rv / 100 * .8;
+  dlyG.gain.value = P.dy / 100 * .6;
+  dlyNode.delayTime.value = P.dt2;
+  dlyFb.gain.value = P.df / 100;
+  chorG.gain.value = P.ch / 100 * .5;
+  chorLFOG.gain.value = P.ch / 100 * .007;
+  setDist(P.ds / 100);
+  master.gain.value = P.vol / 100;
+}
+
+// ═══════════ PARAMS ═══════════
+let P = {...PR[0]};
+function loadPreset(i) { P = {...PR[i]}; applyAudio(); updateUI(); }
+
+// ═══════════ NOTE ON/OFF ═══════════
+const freq = n => 440 * Math.pow(2, (n-69)/12);
+const active = new Map();
+
+function noteOn(n) {
+  initAC(); if (ac.state === 'suspended') ac.resume();
+  if (active.has(n)) noteOffQuick(n);
+  // Limit polyphony to avoid distortion from oscillator buildup
+  if (active.size >= 8) {
+    const oldest = active.keys().next().value;
+    noteOffQuick(oldest); hl(oldest, false);
+  }
+  const t = ac.currentTime;
+  const env = ac.createGain();
+  env.gain.setValueAtTime(0, t);
+  env.gain.linearRampToValueAtTime(1, t + P.a/1000);
+  env.gain.linearRampToValueAtTime(P.s/100, t + P.a/1000 + P.d/1000);
+  env.connect(distNode);
+  const oscs = [];
+  for (let i = 0; i < P.vx; i++) {
+    const osc = ac.createOscillator();
+    osc.type = P.w;
+    const cents = i === 0 ? 0 : (i%2===1?1:-1) * Math.ceil(i/2) * P.dt;
+    osc.frequency.value = freq(n + P.o*12) * Math.pow(2, cents/1200);
+    osc.connect(env); osc.start(t); oscs.push(osc);
+  }
+  active.set(n, {oscs, env});
+  if (isRec) recEv({tp:'on', n, tm: ac.currentTime - recT0});
+}
+
+function noteOff(n) {
+  const x = active.get(n); if (!x) return;
+  active.delete(n);
+  const t = ac.currentTime, r = P.r/1000;
+  x.env.gain.cancelScheduledValues(t);
+  x.env.gain.setValueAtTime(x.env.gain.value, t);
+  x.env.gain.linearRampToValueAtTime(0, t + r);
+  x.oscs.forEach(o => o.stop(t + r + .05));
+  if (isRec) recEv({tp:'off', n, tm: ac.currentTime - recT0});
+}
+
+// Short 20ms cut for legato slide — avoids oscillator pile-up
+function noteOffQuick(n) {
+  const x = active.get(n); if (!x) return;
+  active.delete(n);
+  const t = ac.currentTime;
+  x.env.gain.cancelScheduledValues(t);
+  x.env.gain.setValueAtTime(x.env.gain.value, t);
+  x.env.gain.linearRampToValueAtTime(0, t + 0.02);
+  x.oscs.forEach(o => o.stop(t + 0.03));
+  if (isRec) recEv({tp:'off', n, tm: ac.currentTime - recT0});
+}
+
+function hl(n, on) {
+  document.querySelector(`[data-note="${n}"]`)?.classList.toggle('on', on);
+}
+
+// ═══════════ KEYBOARD ═══════════
+const WHITES = [0,2,4,5,7,9,11], BLACKS = [1,3,-1,6,8,10,-1];
+const OCT0 = 3, NOCTS = 4;
+let WW, WH, BW, BH;
+
+function buildKbd() {
+  const wrap = document.getElementById('kbd-wrap');
+  WH = wrap.clientHeight || 180;
+  WW = Math.max(34, Math.min(52, Math.floor(WH / 4.2)));
+  BW = Math.round(WW * .6); BH = Math.round(WH * .62);
+  const kbd = document.getElementById('kbd');
+  kbd.innerHTML = ''; kbd.style.height = WH + 'px';
+  let wx = 0;
+  for (let oct = OCT0; oct < OCT0+NOCTS; oct++) {
+    for (let wi = 0; wi < 7; wi++) {
+      const mn = oct*12 + WHITES[wi];
+      const w = document.createElement('div');
+      w.className = 'kw'; w.style.width = WW+'px'; w.style.height = WH+'px'; w.dataset.note = mn;
+      if (WHITES[wi] === 0) {
+        const l = document.createElement('div'); l.className = 'klbl'; l.textContent = 'C'+oct; w.appendChild(l);
+      }
+      kbd.appendChild(w);
+      const bn = BLACKS[wi];
+      if (bn !== -1) {
+        const b = document.createElement('div'); b.className = 'kb';
+        b.style.cssText = `width:${BW}px;height:${BH}px;left:${wx+WW-BW/2}px`;
+        b.dataset.note = oct*12+bn; kbd.appendChild(b);
+      }
+      wx += WW;
+    }
+  }
+  kbd.style.width = wx + 'px';
+  // Scroll to C4
+  wrap.scrollLeft = (4-OCT0)*7*WW - wrap.clientWidth/2 + WW*2;
+  setupKbdTouch();
+}
+
+function noteAtXY(x, y) {
+  const kbd = document.getElementById('kbd');
+  const r = kbd.getBoundingClientRect(), lx = x-r.left, ly = y-r.top;
+  for (const b of kbd.querySelectorAll('.kb')) {
+    const bl = parseFloat(b.style.left);
+    if (lx >= bl && lx <= bl+BW && ly <= BH) return +b.dataset.note;
+  }
+  const wi = Math.floor(lx / WW);
+  const w = kbd.querySelectorAll('.kw')[wi];
+  return w ? +w.dataset.note : null;
+}
+
+function setupKbdTouch() {
+  const kbd = document.getElementById('kbd');
+  const tmap = new Map();
+  kbd.addEventListener('touchstart', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      const n = noteAtXY(t.clientX, t.clientY);
+      if (n !== null) { tmap.set(t.identifier, n); noteOn(n); hl(n, true); }
+    }
+  }, {passive: false});
+  kbd.addEventListener('touchmove', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      const n = noteAtXY(t.clientX, t.clientY), p = tmap.get(t.identifier);
+      if (n !== p) {
+        if (p !== undefined) { noteOffQuick(p); hl(p, false); }
+        if (n !== null) { noteOn(n); hl(n, true); }
+        tmap.set(t.identifier, n);
+      }
+    }
+  }, {passive: false});
+  const end = e => {
+    for (const t of e.changedTouches) {
+      const p = tmap.get(t.identifier);
+      if (p !== undefined) { noteOff(p); hl(p, false); }
+      tmap.delete(t.identifier);
+    }
+  };
+  kbd.addEventListener('touchend', end, {passive: false});
+  kbd.addEventListener('touchcancel', end, {passive: false});
+}
+
+// ═══════════ LOOP RECORDER ═══════════
+let isRec = false, recT0 = 0, loopEvs = [], loopDur = 0, loopTmr = null;
+function recEv(ev) { loopEvs.push(ev); }
+
+function startRec() {
+  initAC(); if (ac.state === 'suspended') ac.resume();
+  stopLoop(); loopEvs = []; isRec = true; recT0 = ac.currentTime;
+  document.getElementById('btn-rec').classList.add('rec-on');
+  document.getElementById('loop-st').textContent = '● запись...';
+}
+function stopRec() {
+  if (!isRec) return;
+  isRec = false; loopDur = ac.currentTime - recT0;
+  document.getElementById('btn-rec').classList.remove('rec-on');
+  document.getElementById('loop-st').textContent = loopEvs.length ? `петля ${loopDur.toFixed(1)}с` : 'нет записи';
+  if (loopEvs.length) startLoop();
+}
+function startLoop() {
+  stopLoop(); if (!loopEvs.length || !loopDur) return;
+  document.getElementById('btn-loop').classList.add('loop-on');
+  document.getElementById('btn-loop').textContent = '⏹ Loop';
+  const go = () => {
+    loopEvs.forEach(ev => setTimeout(() => {
+      if (ev.tp === 'on') { noteOn(ev.n); hl(ev.n, true); }
+      else { noteOff(ev.n); hl(ev.n, false); }
+    }, ev.tm * 1000));
+    loopTmr = setTimeout(go, loopDur * 1000);
+  };
+  go();
+}
+function stopLoop() {
+  clearTimeout(loopTmr); loopTmr = null;
+  document.getElementById('btn-loop').classList.remove('loop-on');
+  document.getElementById('btn-loop').textContent = '▶ Loop';
+  active.forEach((_, n) => { noteOff(n); hl(n, false); });
+}
+function clearLoop() {
+  stopLoop(); loopEvs = []; loopDur = 0;
+  document.getElementById('loop-st').textContent = 'нет записи';
+}
+
+document.getElementById('btn-rec').addEventListener('click', () => isRec ? stopRec() : startRec());
+document.getElementById('btn-loop').addEventListener('click', () => loopTmr ? stopLoop() : startLoop());
+document.getElementById('btn-clr').addEventListener('click', clearLoop);
+
+// ═══════════ SAMPLER PADS ═══════════
+const PADS = Array.from({length: 8}, (_, i) => ({name: String(i+1), buf: null}));
+let recPadIdx = null, micRec = null;
+
+function buildPads() {
+  const g = document.getElementById('pads-grid'); g.innerHTML = '';
+  PADS.forEach((p, i) => {
+    const el = document.createElement('div');
+    el.className = 'pad' + (p.buf ? ' loaded' : '');
+    el.innerHTML = `<div class="pad-n">${p.name}</div><div class="pad-i">${p.buf ? '▶ sample' : 'пусто'}</div>`;
+    el.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      if (recPadIdx !== null) { assignRecPad(i); return; }
+      if (p.buf) { el.classList.add('on'); setTimeout(() => el.classList.remove('on'), 150); playPad(i); }
+    });
+    g.appendChild(el);
+  });
+}
+
+function playPad(i) {
+  if (!ac) initAC(); if (ac.state === 'suspended') ac.resume();
+  if (!PADS[i].buf) return;
+  const s = ac.createBufferSource(); s.buffer = PADS[i].buf; s.connect(distNode); s.start();
+}
+
+document.getElementById('btn-pad-rec').addEventListener('click', () => {
+  if (recPadIdx !== null) { stopMicRec(); return; }
+  recPadIdx = 'pending';
+  document.getElementById('pad-st').textContent = 'Нажмите на пэд';
+  document.getElementById('btn-pad-rec').textContent = '✕ Отмена';
+});
+
+function assignRecPad(i) {
+  recPadIdx = i;
+  document.getElementById('pad-st').textContent = `Запись пэда ${i+1}... нажмите «Стоп»`;
+  startMicRec(i);
+}
+
+async function startMicRec(idx) {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+    const chunks = [];
+    micRec = new MediaRecorder(stream);
+    micRec.ondataavailable = e => chunks.push(e.data);
+    micRec.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      if (!ac) initAC();
+      PADS[idx].buf = await ac.decodeAudioData(await new Blob(chunks, {type:'audio/webm'}).arrayBuffer());
+      recPadIdx = null; buildPads();
+      document.getElementById('pad-st').textContent = `Пэд ${idx+1} записан`;
+      document.getElementById('btn-pad-rec').textContent = '🎤 Запись';
+    };
+    micRec.start();
+    document.getElementById('btn-pad-rec').textContent = '⏹ Стоп';
+  } catch {
+    document.getElementById('pad-st').textContent = 'Нет доступа к микрофону';
+    recPadIdx = null;
+    document.getElementById('btn-pad-rec').textContent = '🎤 Запись';
+  }
+}
+function stopMicRec() {
+  if (micRec && micRec.state === 'recording') micRec.stop();
+  recPadIdx = null;
+  document.getElementById('btn-pad-rec').textContent = '🎤 Запись';
+}
+
+// ═══════════ UI ═══════════
+function initPresets() {
+  const bar = document.getElementById('preset-bar');
+  PR.forEach((p, i) => {
+    const b = document.createElement('button');
+    b.className = 'pbtn' + (i === 0 ? ' on' : ''); b.textContent = p.n;
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.pbtn').forEach(x => x.classList.remove('on'));
+      b.classList.add('on'); loadPreset(i);
+    });
+    bar.appendChild(b);
+  });
+}
+
+function updateUI() {
+  document.querySelectorAll('.wb[data-wave]').forEach(b => b.classList.toggle('on', b.dataset.wave === P.w));
+  document.querySelectorAll('.wb[data-ftype]').forEach(b => b.classList.toggle('on', b.dataset.ftype === P.ft));
+  const sv = (id, v) => { const e = document.getElementById(id); if (e) e.value = v; };
+  const st = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  const hz = v => v >= 1000 ? (v/1000).toFixed(1)+'кГц' : v+'Гц';
+  sv('sl-dt',    P.dt);  st('v-dt',    P.dt);
+  sv('sl-oct',   P.o);   st('v-oct',   P.o);
+  sv('sl-vox',   P.vx);  st('v-vox',   P.vx);
+  sv('sl-vol',   P.vol); st('v-vol',   P.vol+'%');
+  sv('sl-atk',   P.a);   st('v-atk',   P.a+'мс');
+  sv('sl-dec',   P.d);   st('v-dec',   P.d+'мс');
+  sv('sl-sus',   P.s);   st('v-sus',   P.s+'%');
+  sv('sl-rel',   P.r);   st('v-rel',   P.r+'мс');
+  sv('sl-cut',   P.c);   st('v-cut',   hz(P.c));
+  sv('sl-res',   P.q);   st('v-res',   P.q);
+  sv('sl-la',    P.la);  st('v-la',    P.la);
+  sv('sl-lr',    P.lr);  st('v-lr',    P.lr+'Гц');
+  sv('sl-rev',   P.rv);  st('v-rev',   P.rv+'%');
+  sv('sl-dly',   P.dy);  st('v-dly',   P.dy+'%');
+  sv('sl-dtime', P.dt2); st('v-dtime', P.dt2.toFixed(2)+'с');
+  sv('sl-dfb',   P.df);  st('v-dfb',   P.df+'%');
+  sv('sl-cho',   P.ch);  st('v-cho',   P.ch+'%');
+  sv('sl-dis',   P.ds);  st('v-dis',   P.ds+'%');
+}
+
+// Wave buttons
+document.querySelectorAll('.wb[data-wave]').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.wb[data-wave]').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); P.w = b.dataset.wave;
+}));
+document.querySelectorAll('.wb[data-ftype]').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.wb[data-ftype]').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); P.ft = b.dataset.ftype; if (filt) filt.type = P.ft;
+}));
+
+// Tabs
+document.querySelectorAll('.tbtn').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.tbtn').forEach(x => x.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); document.getElementById('tab-'+b.dataset.tab).classList.add('on');
+}));
+
+// Sliders
+const hz = v => +v >= 1000 ? (+v/1000).toFixed(1)+'кГц' : v+'Гц';
+const SL = {
+  'sl-dt':    v => { P.dt  = +v; return v; },
+  'sl-oct':   v => { P.o   = +v; return v; },
+  'sl-vox':   v => { P.vx  = +v; return v; },
+  'sl-vol':   v => { P.vol = +v; if (master) master.gain.value = +v/100; return v+'%'; },
+  'sl-atk':   v => { P.a   = +v; return v+'мс'; },
+  'sl-dec':   v => { P.d   = +v; return v+'мс'; },
+  'sl-sus':   v => { P.s   = +v; return v+'%'; },
+  'sl-rel':   v => { P.r   = +v; return v+'мс'; },
+  'sl-cut':   v => { P.c   = +v; if (filt) filt.frequency.value = +v; return hz(+v); },
+  'sl-res':   v => { P.q   = +v; if (filt) filt.Q.value = +v; return v; },
+  'sl-la':    v => { P.la  = +v; if (lfoGain) lfoGain.gain.value = +v * P.c * .04; return v; },
+  'sl-lr':    v => { P.lr  = +v; if (lfoOsc) lfoOsc.frequency.value = +v; return v+'Гц'; },
+  'sl-rev':   v => { P.rv  = +v; if (revG) revG.gain.value = +v/100*.8; return v+'%'; },
+  'sl-dly':   v => { P.dy  = +v; if (dlyG) dlyG.gain.value = +v/100*.6; return v+'%'; },
+  'sl-dtime': v => { P.dt2 = +v; if (dlyNode) dlyNode.delayTime.value = +v; return (+v).toFixed(2)+'с'; },
+  'sl-dfb':   v => { P.df  = +v; if (dlyFb) dlyFb.gain.value = +v/100; return v+'%'; },
+  'sl-cho':   v => { P.ch  = +v; if (chorG) { chorG.gain.value = +v/100*.5; chorLFOG.gain.value = +v/100*.007; } return v+'%'; },
+  'sl-dis':   v => { P.ds  = +v; setDist(+v/100); return v+'%'; },
+};
+Object.entries(SL).forEach(([id, fn]) => {
+  const sl = document.getElementById(id), vid = 'v-' + id.replace('sl-','');
+  if (!sl) return;
+  sl.addEventListener('input', () => { const r = fn(sl.value); document.getElementById(vid).textContent = r; });
+});
+
+// BPM
+document.getElementById('bpm-range').addEventListener('input', e => {
+  document.getElementById('bpm-val').textContent = e.target.value;
+});
+
+// PC keyboard
+const KMAP = {a:60,w:61,s:62,e:63,d:64,f:65,t:66,g:67,y:68,h:69,u:70,j:71,k:72,o:73,l:74,p:75};
+const held = new Set();
+document.addEventListener('keydown', e => {
+  if (e.repeat || e.target.tagName === 'INPUT') return;
+  const n = KMAP[e.key];
+  if (n && !held.has(n)) { held.add(n); noteOn(n); hl(n, true); }
+});
+document.addEventListener('keyup', e => {
+  const n = KMAP[e.key];
+  if (n) { held.delete(n); noteOff(n); hl(n, false); }
+});
+
+// ═══════════ INIT ═══════════
+initPresets();
+buildPads();
+updateUI();
+window.addEventListener('resize', buildKbd);
+buildKbd();
+</script>
+</body>
+</html>

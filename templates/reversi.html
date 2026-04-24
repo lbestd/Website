@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Реверси</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background: #11111b;
+    color: #cdd6f4;
+    font-family: system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+#top-bar {
+    width: 100%;
+    max-width: 520px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px 6px;
+    font-size: 14px;
+    color: #a6adc8;
+}
+#top-bar a { color: #89b4fa; text-decoration: none; font-size: 13px; }
+
+#score-bar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 4px 16px 8px;
+    font-size: 14px;
+}
+.badge {
+    background: #1e1e2e;
+    border: 1px solid #313244;
+    border-radius: 20px;
+    padding: 5px 16px;
+    color: #cdd6f4;
+    font-size: 15px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.badge .dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    display: inline-block;
+}
+.dot-black { background: #11111b; border: 1.5px solid #585b70; }
+.dot-white { background: #cdd6f4; }
+
+#turn-badge {
+    background: #1e1e2e;
+    border: 1px solid #313244;
+    border-radius: 20px;
+    padding: 5px 16px;
+    font-size: 13px;
+    color: #a6adc8;
+}
+
+#canvas-wrap {
+    padding: 4px 8px 8px;
+}
+
+canvas {
+    display: block;
+    border-radius: 10px;
+    touch-action: none;
+    cursor: pointer;
+}
+
+#status {
+    padding: 6px 16px 10px;
+    font-size: 13px;
+    color: #a6adc8;
+    min-height: 26px;
+    text-align: center;
+}
+
+/* ─── Overlay ─── */
+#overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 16px; z-index: 100;
+}
+#overlay h2 {
+    font-size: 26px;
+    color: #cdd6f4;
+    font-weight: 600;
+}
+.ov-panel {
+    background: #1e1e2e;
+    border: 1px solid #313244;
+    border-radius: 18px;
+    padding: 20px 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    min-width: 280px;
+}
+.ov-label {
+    font-size: 13px;
+    color: #a6adc8;
+    letter-spacing: 0.04em;
+}
+.ov-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.ov-btn {
+    background: #313244;
+    border: 1px solid #45475a;
+    border-radius: 20px;
+    padding: 8px 20px;
+    font-size: 14px;
+    color: #cdd6f4;
+    cursor: pointer;
+    font-family: system-ui, sans-serif;
+    transition: background 0.12s, border-color 0.12s;
+    -webkit-tap-highlight-color: transparent;
+}
+.ov-btn:hover { background: #45475a; border-color: #585b70; }
+.ov-btn.active { background: #cba6f7; color: #1e1e2e; border-color: #cba6f7; font-weight: 700; }
+.ov-btn.primary {
+    background: #89b4fa; color: #1e1e2e;
+    border-color: #89b4fa; font-weight: 700;
+    padding: 10px 32px; font-size: 15px;
+}
+.ov-btn.primary:hover { background: #b4d0fa; border-color: #b4d0fa; }
+
+#diff-section {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+/* Result overlay */
+#result-scores {
+    display: flex; gap: 20px; align-items: center;
+    font-size: 20px; font-weight: 700;
+}
+#result-scores .rs-black { color: #cdd6f4; }
+#result-scores .rs-sep   { color: #585b70; font-size: 16px; }
+#result-scores .rs-white { color: #cba6f7; }
+</style>
+</head>
+<body>
+
+<div id="top-bar">
+    <a href="/">← Меню</a>
+    <span id="turn-badge">⚫ Чёрные ходят</span>
+</div>
+
+<div id="score-bar">
+    <div class="badge">
+        <span class="dot dot-black"></span>
+        <span id="score-black">2</span>
+    </div>
+    <div class="badge">
+        <span class="dot dot-white"></span>
+        <span id="score-white">2</span>
+    </div>
+</div>
+
+<div id="canvas-wrap">
+    <canvas id="board" width="360" height="360"></canvas>
+</div>
+
+<div id="status"></div>
+
+<!-- Start / settings overlay -->
+<div id="overlay">
+    <h2>⬤ Реверси</h2>
+    <div class="ov-panel">
+        <span class="ov-label">Режим игры</span>
+        <div class="ov-row">
+            <button class="ov-btn active" id="mode-cpu">Против компьютера</button>
+            <button class="ov-btn" id="mode-2p">Два игрока</button>
+        </div>
+        <div id="diff-section">
+            <span class="ov-label">Сложность</span>
+            <div class="ov-row">
+                <button class="ov-btn active" data-diff="easy">Лёгкий</button>
+                <button class="ov-btn" data-diff="medium">Средний</button>
+                <button class="ov-btn" data-diff="hard">Сложный</button>
+            </div>
+        </div>
+        <button class="ov-btn primary" id="start-btn" style="margin-top:4px">Начать</button>
+    </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════
+   Constants & state
+═══════════════════════════════════════════════ */
+const SIZE = 8;
+const EMPTY = 0, BLACK = 1, WHITE = 2;
+const DIRS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+
+// Positional weight table — positive favours BLACK, used in evaluation
+const WEIGHTS = [
+    [100, -20,  10,  5,  5, 10, -20, 100],
+    [-20, -30,  -2, -2, -2, -2, -30, -20],
+    [ 10,  -2,   2,  1,  1,  2,  -2,  10],
+    [  5,  -2,   1,  0,  0,  1,  -2,   5],
+    [  5,  -2,   1,  0,  0,  1,  -2,   5],
+    [ 10,  -2,   2,  1,  1,  2,  -2,  10],
+    [-20, -30,  -2, -2, -2, -2, -30, -20],
+    [100, -20,  10,  5,  5, 10, -20, 100],
+];
+
+let board, currentTurn, gameActive;
+let vsComputer = true;
+let difficulty = 'easy';
+let aiThinking = false;
+let lastMove = null;
+let animRunning = false;
+
+const canvas = document.getElementById('board');
+const ctx = canvas.getContext('2d');
+const statusEl = document.getElementById('status');
+const turnBadge = document.getElementById('turn-badge');
+const scoreBlack = document.getElementById('score-black');
+const scoreWhite = document.getElementById('score-white');
+
+/* ═══════════════════════════════════════════════
+   Board logic
+═══════════════════════════════════════════════ */
+function makeBoard() {
+    const b = Array.from({length: SIZE}, () => new Array(SIZE).fill(EMPTY));
+    b[3][3] = WHITE; b[3][4] = BLACK;
+    b[4][3] = BLACK; b[4][4] = WHITE;
+    return b;
+}
+
+function cloneBoard(b) {
+    return b.map(r => r.slice());
+}
+
+function getFlips(r, c, turn, b) {
+    if (b[r][c] !== EMPTY) return [];
+    const opp = turn === BLACK ? WHITE : BLACK;
+    const flips = [];
+    for (const [dr, dc] of DIRS) {
+        const line = [];
+        let nr = r + dr, nc = c + dc;
+        while (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && b[nr][nc] === opp) {
+            line.push([nr, nc]);
+            nr += dr; nc += dc;
+        }
+        if (line.length > 0 && nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && b[nr][nc] === turn) {
+            for (const pos of line) flips.push(pos);
+        }
+    }
+    return flips;
+}
+
+function getValidMoves(turn, b) {
+    const moves = [];
+    for (let r = 0; r < SIZE; r++)
+        for (let c = 0; c < SIZE; c++)
+            if (getFlips(r, c, turn, b).length > 0) moves.push([r, c]);
+    return moves;
+}
+
+function applyMove(r, c, turn, b) {
+    const nb = cloneBoard(b);
+    const flips = getFlips(r, c, turn, nb);
+    nb[r][c] = turn;
+    for (const [fr, fc] of flips) nb[fr][fc] = turn;
+    return nb;
+}
+
+function countPieces(b) {
+    let black = 0, white = 0;
+    for (let r = 0; r < SIZE; r++)
+        for (let c = 0; c < SIZE; c++) {
+            if (b[r][c] === BLACK) black++;
+            else if (b[r][c] === WHITE) white++;
+        }
+    return {black, white};
+}
+
+/* ═══════════════════════════════════════════════
+   AI — evaluation
+═══════════════════════════════════════════════ */
+function evaluateBoard(b) {
+    // Returns score from WHITE's perspective (positive = good for WHITE)
+    let score = 0;
+    for (let r = 0; r < SIZE; r++)
+        for (let c = 0; c < SIZE; c++) {
+            if (b[r][c] === WHITE)      score += WEIGHTS[r][c];
+            else if (b[r][c] === BLACK) score -= WEIGHTS[r][c];
+        }
+    // Mobility
+    score += 5 * (getValidMoves(WHITE, b).length - getValidMoves(BLACK, b).length);
+    return score;
+}
+
+function minimax(b, depth, alpha, beta, isMax, turn) {
+    const opp = turn === WHITE ? BLACK : WHITE;
+    const moves = getValidMoves(turn, b);
+
+    if (depth === 0 || (moves.length === 0 && getValidMoves(opp, b).length === 0)) {
+        return evaluateBoard(b);
+    }
+
+    if (moves.length === 0) {
+        // forced pass
+        return minimax(b, depth - 1, alpha, beta, !isMax, opp);
+    }
+
+    if (isMax) {
+        let best = -Infinity;
+        for (const [r, c] of moves) {
+            const val = minimax(applyMove(r, c, turn, b), depth - 1, alpha, beta, false, opp);
+            if (val > best) best = val;
+            if (val > alpha) alpha = val;
+            if (beta <= alpha) break;
+        }
+        return best;
+    } else {
+        let best = Infinity;
+        for (const [r, c] of moves) {
+            const val = minimax(applyMove(r, c, turn, b), depth - 1, alpha, beta, true, opp);
+            if (val < best) best = val;
+            if (val < beta) beta = val;
+            if (beta <= alpha) break;
+        }
+        return best;
+    }
+}
+
+function getAIMove(b) {
+    const moves = getValidMoves(WHITE, b);
+    if (moves.length === 0) return null;
+
+    if (difficulty === 'easy') {
+        return moves[Math.floor(Math.random() * moves.length)];
+    }
+
+    const depth = difficulty === 'hard' ? 5 : 3;
+    let bestVal = -Infinity;
+    let bestMove = moves[0];
+    const opp = BLACK;
+
+    for (const [r, c] of moves) {
+        const val = minimax(applyMove(r, c, WHITE, b), depth - 1, -Infinity, Infinity, false, opp);
+        if (val > bestVal) {
+            bestVal = val;
+            bestMove = [r, c];
+        }
+    }
+    return bestMove;
+}
+
+/* ═══════════════════════════════════════════════
+   Rendering
+═══════════════════════════════════════════════ */
+const C_BOARD      = '#1a5e3a';
+const C_BOARD_DARK = '#174f31';
+const C_LINE       = '#1e7042';
+const C_HINT_FILL  = 'rgba(166,227,161,0.28)';
+const C_HINT_DOT   = 'rgba(166,227,161,0.75)';
+const C_LAST_MARK  = 'rgba(249,226,175,0.45)';
+
+function getCELL() { return canvas.width / SIZE; }
+
+function drawBoard(validMoves) {
+    const CELL = getCELL();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Checkerboard
+    for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+            ctx.fillStyle = (r + c) % 2 === 0 ? C_BOARD : C_BOARD_DARK;
+            ctx.fillRect(c * CELL, r * CELL, CELL, CELL);
+        }
+    }
+
+    // Grid lines
+    ctx.strokeStyle = C_LINE;
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i <= SIZE; i++) {
+        ctx.beginPath(); ctx.moveTo(i * CELL, 0); ctx.lineTo(i * CELL, canvas.height); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, i * CELL); ctx.lineTo(canvas.width, i * CELL); ctx.stroke();
+    }
+
+    // Last move highlight
+    if (lastMove) {
+        const [lr, lc] = lastMove;
+        ctx.fillStyle = C_LAST_MARK;
+        ctx.fillRect(lc * CELL + 1, lr * CELL + 1, CELL - 2, CELL - 2);
+    }
+
+    // Hint dots
+    if (validMoves && validMoves.length > 0 && !animRunning) {
+        for (const [r, c] of validMoves) {
+            const cx = c * CELL + CELL / 2;
+            const cy = r * CELL + CELL / 2;
+            ctx.fillStyle = C_HINT_FILL;
+            ctx.beginPath();
+            ctx.arc(cx, cy, CELL * 0.36, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = C_HINT_DOT;
+            ctx.beginPath();
+            ctx.arc(cx, cy, CELL * 0.09, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // Pieces
+    for (let r = 0; r < SIZE; r++)
+        for (let c = 0; c < SIZE; c++)
+            if (board[r][c] !== EMPTY) drawPiece(r, c, board[r][c], 1.0);
+}
+
+function drawPiece(r, c, turn, scale) {
+    const CELL = getCELL();
+    const cx = c * CELL + CELL / 2;
+    const cy = r * CELL + CELL / 2;
+    const rad = (CELL / 2 - 4) * Math.max(scale, 0);
+    if (rad <= 0.5) return;
+
+    const isBk = turn === BLACK;
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.55)';
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetY = 2;
+
+    const grad = ctx.createRadialGradient(
+        cx - rad * 0.25, cy - rad * 0.3, rad * 0.05,
+        cx, cy, rad
+    );
+    if (isBk) {
+        grad.addColorStop(0, '#3a3a52');
+        grad.addColorStop(1, '#11111b');
+    } else {
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(1, '#c0c4d6');
+    }
+
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.strokeStyle = isBk ? '#585b70' : '#b0b3c4';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+    ctx.stroke();
+}
+
+/* ═══════════════════════════════════════════════
+   Flip animation
+═══════════════════════════════════════════════ */
+function animateFlips(flips, moveTurn, onDone) {
+    // The pieces to flip go from the old color to the new (moveTurn) color.
+    const oldTurn = moveTurn === BLACK ? WHITE : BLACK;
+    const FRAMES = 16;
+    let frame = 0;
+    animRunning = true;
+
+    function step() {
+        frame++;
+        const p = frame / FRAMES; // 0..1
+        // Squeeze: scale from 1 → 0 in first half, 0 → 1 in second half
+        // First half shows old color, second half shows new color
+        const halfWay = p < 0.5;
+        const scale = halfWay ? (1 - p * 2) : ((p - 0.5) * 2);
+        const showTurn = halfWay ? oldTurn : moveTurn;
+
+        drawBoard(null); // draws static pieces (flipping ones still have old value in board copy)
+
+        // Overdraw flipping pieces with current animation scale/color
+        for (const [r, c] of flips) {
+            drawPiece(r, c, showTurn, scale);
+        }
+
+        if (frame < FRAMES) {
+            requestAnimationFrame(step);
+        } else {
+            animRunning = false;
+            onDone();
+        }
+    }
+    requestAnimationFrame(step);
+}
+
+/* ═══════════════════════════════════════════════
+   Score / UI helpers
+═══════════════════════════════════════════════ */
+function updateScoreDisplay() {
+    const {black, white} = countPieces(board);
+    scoreBlack.textContent = black;
+    scoreWhite.textContent = white;
+}
+
+function updateTurnBadge() {
+    if (!gameActive) return;
+    if (currentTurn === BLACK) {
+        turnBadge.textContent = '⚫ Чёрные ходят';
+        turnBadge.style.color = '#cdd6f4';
+    } else {
+        turnBadge.textContent = '⚪ Белые ходят';
+        turnBadge.style.color = '#cba6f7';
+    }
+}
+
+function setStatus(msg) { statusEl.textContent = msg; }
+
+/* ═══════════════════════════════════════════════
+   Game flow
+═══════════════════════════════════════════════ */
+function startGame() {
+    board = makeBoard();
+    currentTurn = BLACK;
+    gameActive = true;
+    aiThinking = false;
+    animRunning = false;
+    lastMove = null;
+
+    updateScoreDisplay();
+    updateTurnBadge();
+    setStatus('');
+    document.getElementById('overlay').style.display = 'none';
+
+    drawBoard(getValidMoves(currentTurn, board));
+}
+
+function doMove(r, c) {
+    if (!gameActive || aiThinking || animRunning) return;
+    const flips = getFlips(r, c, currentTurn, board);
+    if (flips.length === 0) return;
+
+    const moveTurn = currentTurn;
+
+    // Apply immediately to board state so score updates
+    board = applyMove(r, c, moveTurn, board);
+    lastMove = [r, c];
+    updateScoreDisplay();
+
+    // Draw board with flipping pieces still showing old color
+    // (animateFlips overdaws them)
+    // Temporarily restore flipping cells to old color for visual:
+    const oldTurn = moveTurn === BLACK ? WHITE : BLACK;
+    for (const [fr, fc] of flips) board[fr][fc] = oldTurn;
+
+    animateFlips(flips, moveTurn, () => {
+        // Restore correct board state
+        for (const [fr, fc] of flips) board[fr][fc] = moveTurn;
+        drawBoard(null);
+        nextTurn();
+    });
+}
+
+function nextTurn() {
+    const opp = currentTurn === BLACK ? WHITE : BLACK;
+    currentTurn = opp;
+
+    const oppMoves = getValidMoves(currentTurn, board);
+
+    if (oppMoves.length === 0) {
+        // Check if original player also stuck
+        const origMoves = getValidMoves(opp, board);
+        if (origMoves.length === 0) {
+            endGame();
+            return;
+        }
+        // Skip turn
+        const skipName = currentTurn === BLACK ? 'Чёрные' : 'Белые';
+        setStatus(skipName + ' пропускают ход');
+        currentTurn = opp;
+        updateTurnBadge();
+        setTimeout(() => {
+            setStatus('');
+            drawBoard(vsComputer && currentTurn === WHITE ? [] : getValidMoves(currentTurn, board));
+            if (vsComputer && currentTurn === WHITE) triggerAI();
+        }, 900);
+        return;
+    }
+
+    updateTurnBadge();
+    setStatus('');
+    drawBoard(vsComputer && currentTurn === WHITE ? [] : oppMoves);
+
+    if (vsComputer && currentTurn === WHITE) triggerAI();
+}
+
+function triggerAI() {
+    if (!gameActive) return;
+    aiThinking = true;
+    setStatus('Компьютер думает...');
+    turnBadge.style.color = '#f9e2af';
+
+    setTimeout(() => {
+        if (!gameActive) return;
+        const move = getAIMove(board);
+        aiThinking = false;
+        setStatus('');
+        if (move) doMove(move[0], move[1]);
+        else nextTurn();
+    }, 400);
+}
+
+function endGame() {
+    gameActive = false;
+    drawBoard([]);
+
+    const {black, white} = countPieces(board);
+    let winner;
+    if (black > white)      winner = vsComputer ? '⚫ Вы победили!' : '⚫ Победили чёрные!';
+    else if (white > black) winner = vsComputer ? '⚪ Компьютер победил' : '⚪ Победили белые!';
+    else                    winner = 'Ничья!';
+
+    const sub = black > white
+        ? 'Чёрные заняли больше клеток'
+        : white > black ? 'Белые заняли больше клеток'
+        : 'Поровну клеток';
+
+    const ov = document.getElementById('overlay');
+    ov.innerHTML = `
+      <h2>${winner}</h2>
+      <div class="ov-panel">
+        <div id="result-scores">
+          <span class="rs-black">⚫ ${black}</span>
+          <span class="rs-sep">&nbsp;—&nbsp;</span>
+          <span class="rs-white">⚪ ${white}</span>
+        </div>
+        <p style="color:#a6adc8;font-size:14px;text-align:center">${sub}</p>
+        <button class="ov-btn primary" id="restart-btn">Заново</button>
+      </div>`;
+    ov.style.display = 'flex';
+
+    document.getElementById('restart-btn').addEventListener('click', resetToStart);
+}
+
+function resetToStart() {
+    gameActive = false;
+    board = makeBoard();
+    lastMove = null;
+    drawBoard([]);
+    updateScoreDisplay();
+
+    const diffButtons = ['easy','medium','hard'].map(d =>
+        `<button class="ov-btn${difficulty===d?' active':''}" data-diff="${d}">${
+            d==='easy'?'Лёгкий':d==='medium'?'Средний':'Сложный'
+        }</button>`
+    ).join('');
+
+    document.getElementById('overlay').innerHTML = `
+      <h2>⬤ Реверси</h2>
+      <div class="ov-panel">
+        <span class="ov-label">Режим игры</span>
+        <div class="ov-row">
+          <button class="ov-btn${vsComputer?' active':''}" id="mode-cpu">Против компьютера</button>
+          <button class="ov-btn${!vsComputer?' active':''}" id="mode-2p">Два игрока</button>
+        </div>
+        <div id="diff-section" style="display:${vsComputer?'flex':'none'};flex-direction:column;align-items:center;gap:10px;width:100%">
+          <span class="ov-label">Сложность</span>
+          <div class="ov-row">${diffButtons}</div>
+        </div>
+        <button class="ov-btn primary" id="start-btn" style="margin-top:4px">Начать</button>
+      </div>`;
+    document.getElementById('overlay').style.display = 'flex';
+    attachOverlayEvents();
+}
+
+/* ═══════════════════════════════════════════════
+   Canvas input
+═══════════════════════════════════════════════ */
+function canvasToCell(x, y) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const cx = (x - rect.left) * scaleX;
+    const cy = (y - rect.top) * scaleY;
+    const CELL = getCELL();
+    const c = Math.floor(cx / CELL);
+    const r = Math.floor(cy / CELL);
+    if (r < 0 || r >= SIZE || c < 0 || c >= SIZE) return null;
+    return [r, c];
+}
+
+canvas.addEventListener('click', e => {
+    if (!gameActive || aiThinking || animRunning) return;
+    if (vsComputer && currentTurn === WHITE) return;
+    const cell = canvasToCell(e.clientX, e.clientY);
+    if (cell) doMove(cell[0], cell[1]);
+});
+
+canvas.addEventListener('touchend', e => {
+    e.preventDefault();
+    if (!gameActive || aiThinking || animRunning) return;
+    if (vsComputer && currentTurn === WHITE) return;
+    const t = e.changedTouches[0];
+    const cell = canvasToCell(t.clientX, t.clientY);
+    if (cell) doMove(cell[0], cell[1]);
+}, {passive: false});
+
+/* ═══════════════════════════════════════════════
+   Overlay events
+═══════════════════════════════════════════════ */
+function attachOverlayEvents() {
+    const modeCpuBtn = document.getElementById('mode-cpu');
+    const mode2pBtn  = document.getElementById('mode-2p');
+    const diffSect   = document.getElementById('diff-section');
+    const startBtn   = document.getElementById('start-btn');
+
+    modeCpuBtn.addEventListener('click', () => {
+        vsComputer = true;
+        modeCpuBtn.classList.add('active');
+        mode2pBtn.classList.remove('active');
+        diffSect.style.display = 'flex';
+    });
+    mode2pBtn.addEventListener('click', () => {
+        vsComputer = false;
+        mode2pBtn.classList.add('active');
+        modeCpuBtn.classList.remove('active');
+        diffSect.style.display = 'none';
+    });
+
+    document.querySelectorAll('[data-diff]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            difficulty = btn.dataset.diff;
+            document.querySelectorAll('[data-diff]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        });
+    });
+
+    startBtn.addEventListener('click', startGame);
+}
+
+/* ═══════════════════════════════════════════════
+   Responsive canvas
+═══════════════════════════════════════════════ */
+function resizeCanvas() {
+    const maxW = Math.min(window.innerWidth - 16, 400);
+    canvas.style.width  = maxW + 'px';
+    canvas.style.height = maxW + 'px';
+    if (gameActive) drawBoard(vsComputer && currentTurn === WHITE ? [] : getValidMoves(currentTurn, board));
+    else drawBoard([]);
+}
+
+window.addEventListener('resize', resizeCanvas);
+
+/* ═══════════════════════════════════════════════
+   Init
+═══════════════════════════════════════════════ */
+board = makeBoard();
+resizeCanvas();
+drawBoard([]);
+updateScoreDisplay();
+
+// Show diff-section on load since default is vsComputer
+document.getElementById('diff-section').style.display = 'flex';
+attachOverlayEvents();
+</script>
+</body>
+</html>
