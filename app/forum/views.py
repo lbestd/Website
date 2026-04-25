@@ -354,6 +354,10 @@ async def tetris(request):
 async def minesweeper(request):
     return {}
 
+@aiohttp_jinja2.template("stackattack.html")
+async def stackattack(request):
+    return {}
+
 @aiohttp_jinja2.template("synth.html")
 async def synth(request):
     return {}
